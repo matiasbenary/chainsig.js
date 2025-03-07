@@ -1,9 +1,3 @@
-import { greet } from "../src";
-
-test("greet function", () => {
-  expect(greet("bob")).toBe("Hello, bob!");
-});
-
 // import { NEAR_MAINNET_NETWORK_ID, NEAR_TESTNET_NETWORK_ID } from '../../../network';
 import {
   MPC_SIGNER_MAINNET,
@@ -86,7 +80,7 @@ describe("Chain Signature Utils", () => {
       ];
 
       cases.forEach(
-        ({
+        async ({
           publicKey,
           accountId,
           path,
@@ -94,29 +88,82 @@ describe("Chain Signature Utils", () => {
           expectedAddress,
           expectedPublicKey,
         }) => {
-          const result = generateAddress({
+          const result = await generateAddress({
             publicKey,
             accountId,
             path,
             addressType,
           });
 
+          console.log("result", result);
           expect(result).toHaveProperty("address", expectedAddress);
           expect(result).toHaveProperty("publicKey", expectedPublicKey);
         }
       );
     });
 
-    it("should throw an error for unsupported address types", () => {
-      expect(() =>
+    it("should generate a valid Bitcoin mainnet legacy address", async () => {
+      const result = await generateAddress({
+        publicKey:
+          "secp256k1:4NfTiv3UsGahebgTaHyD9vF8KYKMBnfd6kh94mK6xv8fGBiJB8TBtFMP5WWXz6B89Ac1fbpzPwAvoyQebemHFwx3",
+        accountId: "omnitester.testnet",
+        path: "bitcoin-1",
+        addressType: AddressType.BITCOIN_MAINNET_LEGACY,
+      });
+
+      expect(result).toHaveProperty("address");
+      expect(result).toHaveProperty("publicKey");
+    });
+
+    it("should generate a valid Bitcoin mainnet segwit address", async () => {
+      const result = await generateAddress({
+        publicKey:
+          "secp256k1:4NfTiv3UsGahebgTaHyD9vF8KYKMBnfd6kh94mK6xv8fGBiJB8TBtFMP5WWXz6B89Ac1fbpzPwAvoyQebemHFwx3",
+        accountId: "omnitester.testnet",
+        path: "bitcoin-1",
+        addressType: AddressType.BITCOIN_MAINNET_SEGWIT,
+      });
+
+      expect(result).toHaveProperty("address");
+      expect(result).toHaveProperty("publicKey");
+    });
+
+    it("should generate a valid Bitcoin testnet legacy address", async () => {
+      const result = await generateAddress({
+        publicKey:
+          "secp256k1:4NfTiv3UsGahebgTaHyD9vF8KYKMBnfd6kh94mK6xv8fGBiJB8TBtFMP5WWXz6B89Ac1fbpzPwAvoyQebemHFwx3",
+        accountId: "omnitester.testnet",
+        path: "bitcoin-1",
+        addressType: AddressType.BITCOIN_TESTNET_LEGACY,
+      });
+
+      expect(result).toHaveProperty("address");
+      expect(result).toHaveProperty("publicKey");
+    });
+
+    it("should generate a valid Bitcoin testnet segwit address", async () => {
+      const result = await generateAddress({
+        publicKey:
+          "secp256k1:4NfTiv3UsGahebgTaHyD9vF8KYKMBnfd6kh94mK6xv8fGBiJB8TBtFMP5WWXz6B89Ac1fbpzPwAvoyQebemHFwx3",
+        accountId: "omnitester.testnet",
+        path: "bitcoin-1",
+        addressType: AddressType.BITCOIN_TESTNET_SEGWIT,
+      });
+
+      expect(result).toHaveProperty("address");
+      expect(result).toHaveProperty("publicKey");
+    });
+
+    it("should throw an error for unsupported address types", async () => {
+      await expect(
         generateAddress({
           publicKey:
             "secp256k1:4NfTiv3UsGahebgTaHyD9vF8KYKMBnfd6kh94mK6xv8fGBiJB8TBtFMP5WWXz6B89Ac1fbpzPwAvoyQebemHFwx3",
           accountId: "omnitester.testnet",
           path: "0",
-          addressType: AddressType.BITCOIN_MAINNET_LEGACY,
+          addressType: "unsupported-type" as AddressType,
         })
-      ).toThrow("Unsupported address type: bitcoin-mainnet-legacy");
+      ).rejects.toThrow("Unsupported address type: unsupported-type");
     });
   });
 

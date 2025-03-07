@@ -5,11 +5,13 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "module": "ESNext",
-    "moduleResolution": "Node",
+    "module": "commonjs",
+    // "target": "es6", // or another target version you prefer
+    // "outDir": "dist",    "moduleResolution": "Node",
     "target": "ES6",
     "strict": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "typeRoots": ["node_modules/@types", "typings"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "__tests__"]

@@ -1,6 +1,6 @@
 {
   "name": "chainsig-sdk",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,6 +12,7 @@
   "author": "Greg Prouty",
   "license": "ISC",
   "devDependencies": {
+    "@types/bn.js": "^5.1.6",
     "@types/jest": "^29.5.14",
     "@typescript-eslint/eslint-plugin": "^8.25.0",
     "@typescript-eslint/parser": "^8.25.0",
@@ -22,7 +23,10 @@
     "typescript": "^5.8.2"
   },
   "dependencies": {
+    "@types/crypto-js": "^4.2.2",
     "@types/elliptic": "^6.4.18",
+    "bs58check": "^4.0.0",
+    "crypto-js": "^4.2.0",
     "elliptic": "^6.6.1",
     "viem": "^2.23.6"
   }
