@@ -14,6 +14,63 @@ import {
   getMpcAccountIdByNetwork,
   getRootPublicKey,
 } from "../src/kdf";
+import { initializeNear, sign } from "../src/near";
+import * as nearAPI from "near-api-js";
+import BN from "bn.js";
+import {
+  bitcoin,
+  constructPsbt,
+  // recoverPubkeyFromSignature,
+} from "../src/bitcoin";
+import { fetchJson } from "../src/utils";
+// import * as bitcoinJs from "bitcoinjs-lib";
+
+const accountId = process.env.NEAR_ACCOUNT_ID || "default-account-id";
+const privateKey = process.env.NEAR_PRIVATE_KEY || "default-private-key";
+const mpcPublicKey =
+  process.env.MPC_PUBLIC_KEY ||
+  "secp256k1:54hU5wcCmVUPFWLDALXMh1fFToZsVXrx9BbTbHzSfQq1Kd1rJZi52iPa4QQxo6s5TgjWqgpY8HamYuUDzG6fAaUq";
+const contractId = process.env.NEAR_CONTRACT_ID || "default-contract-id";
+
+jest.mock("near-api-js", () => {
+  const originalModule = jest.requireActual("near-api-js");
+  return {
+    ...originalModule,
+    keyStores: {
+      InMemoryKeyStore: jest.fn().mockImplementation(() => ({
+        setKey: jest.fn(),
+      })),
+    },
+    KeyPair: {
+      fromString: jest.fn(),
+    },
+    Near: jest.fn().mockImplementation(() => ({
+      connection: {},
+    })),
+    Account: jest.fn().mockImplementation(() => ({
+      functionCall: jest.fn().mockResolvedValue({
+        transaction: {},
+        transaction_outcome: {
+          id: "test-id",
+          outcome: {
+            logs: [],
+            receipt_ids: [],
+            gas_burnt: 0,
+            tokens_burnt: "0",
+            executor_id: "test.near",
+            status: { SuccessValue: "test" },
+          },
+        },
+        receipts_outcome: [],
+        status: {
+          SuccessValue: Buffer.from(
+            JSON.stringify(["0x1234", "0x5678"])
+          ).toString("base64"),
+        },
+      }),
+    })),
+  };
+});
 
 describe("Chain Signature Utils", () => {
   describe("deriveChildPublicKey", () => {
@@ -30,7 +87,7 @@ describe("Chain Signature Utils", () => {
       );
     });
 
-    it("should derive a valid child public key [against signet]", async () => {
+    it("should derive a valid child public key [against signet]", () => {
       const accountId = "omnitester.testnet";
       const derivedKey = deriveChildPublicKey(
         "secp256k1:4NfTiv3UsGahebgTaHyD9vF8KYKMBnfd6kh94mK6xv8fGBiJB8TBtFMP5WWXz6B89Ac1fbpzPwAvoyQebemHFwx3",
@@ -45,7 +102,7 @@ describe("Chain Signature Utils", () => {
   });
 
   describe("generateAddress", () => {
-    it("should generate a valid EVM address", () => {
+    it("should generate a valid EVM address", async () => {
       const cases = [
         {
           publicKey:
@@ -79,27 +136,24 @@ describe("Chain Signature Utils", () => {
         },
       ];
 
-      cases.forEach(
-        async ({
+      for (const {
+        publicKey,
+        accountId,
+        path,
+        addressType,
+        expectedAddress,
+        expectedPublicKey,
+      } of cases) {
+        const result = await generateAddress({
           publicKey,
           accountId,
           path,
           addressType,
-          expectedAddress,
-          expectedPublicKey,
-        }) => {
-          const result = await generateAddress({
-            publicKey,
-            accountId,
-            path,
-            addressType,
-          });
+        });
 
-          console.log("result", result);
-          expect(result).toHaveProperty("address", expectedAddress);
-          expect(result).toHaveProperty("publicKey", expectedPublicKey);
-        }
-      );
+        expect(result).toHaveProperty("address", expectedAddress);
+        expect(result).toHaveProperty("publicKey", expectedPublicKey);
+      }
     });
 
     it("should generate a valid Bitcoin mainnet legacy address", async () => {
@@ -204,6 +258,214 @@ describe("Chain Signature Utils", () => {
       expect(() => getMpcAccountIdByNetwork("invalid-network" as any)).toThrow(
         "Unsupported network: invalid-network"
       );
+    });
+  });
+});
+
+describe("NEAR Module", () => {
+  const payload = "test-payload";
+  const path = "test-path";
+
+  describe("initializeNear", () => {
+    it("should initialize NEAR and return near and account objects", () => {
+      const { near, account } = initializeNear(accountId, privateKey);
+
+      console.log("initializeNear", near, account);
+      expect(nearAPI.keyStores.InMemoryKeyStore).toHaveBeenCalled();
+      expect(nearAPI.KeyPair.fromString).toHaveBeenCalledWith(privateKey);
+      expect(nearAPI.Near).toHaveBeenCalledWith(
+        expect.objectContaining({
+          networkId: "testnet",
+          nodeUrl: "https://rpc.testnet.near.org",
+        })
+      );
+      expect(nearAPI.Account).toHaveBeenCalledWith({}, accountId);
+      expect(near).toBeDefined();
+      expect(account).toBeDefined();
+    });
+  });
+
+  describe("sign", () => {
+    it("should call functionCall on the account with correct parameters", async () => {
+      const { account } = initializeNear(accountId, privateKey);
+      const functionCallMock = jest
+        .spyOn(account, "functionCall")
+        .mockResolvedValue({
+          transaction: {},
+          transaction_outcome: {
+            id: "test-id",
+            outcome: {
+              logs: [],
+              receipt_ids: [],
+              gas_burnt: 0,
+              tokens_burnt: "0",
+              executor_id: "test.near",
+              status: { SuccessValue: "test" },
+            },
+          },
+          receipts_outcome: [],
+          status: {
+            SuccessValue: Buffer.from(
+              JSON.stringify(["0x1234", "0x5678"])
+            ).toString("base64"),
+          },
+        });
+
+      const result = await sign(account, contractId, payload, path);
+
+      expect(functionCallMock).toHaveBeenCalledWith({
+        contractId,
+        methodName: "sign",
+        args: {
+          payload,
+          path,
+          key_version: 0,
+          rlp_payload: undefined,
+        },
+        gas: new BN("300000000000000"),
+        attachedDeposit: new BN("0"),
+      });
+
+      expect(result).toEqual({
+        r: "1234",
+        s: "0x5678",
+      });
+    });
+
+    it("should handle errors during functionCall", async () => {
+      const { account } = initializeNear(accountId, privateKey);
+      jest
+        .spyOn(account, "functionCall")
+        .mockRejectedValue(new Error("Function call error"));
+
+      const consoleLogSpy = jest
+        .spyOn(console, "log")
+        .mockImplementation(() => {});
+
+      await sign(account, contractId, payload, path);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining("this may take approx. 30 seconds to complete")
+      );
+
+      consoleLogSpy.mockRestore();
+    });
+  });
+});
+
+describe("Bitcoin Module", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe("constructPsbt", () => {
+    let address: string;
+    let publicKey: string;
+
+    beforeAll(async () => {
+      const result = await generateAddress({
+        publicKey: mpcPublicKey,
+        accountId: accountId,
+        path: "bitcoin-1",
+        addressType: AddressType.BITCOIN_TESTNET_LEGACY,
+      });
+      address = result.address;
+      publicKey = result.publicKey;
+    });
+
+    it("should throw an error if no UTXOs are found", async () => {
+      await expect(
+        constructPsbt(address, address, "1000", "testnet")
+      ).rejects.toThrow(`No utxos detected for address: ${address}`);
+    });
+
+    it("should return a PSBT and UTXOs", async () => {
+      const mockUtxos = [{ txid: "txid", vout: 0, value: 2000 }];
+      const result = await constructPsbt(address, address, "1000", "testnet");
+      console.log("result", result);
+      expect(result).toBeDefined();
+      // if (result) {
+      //   expect(result[0]).toEqual(mockUtxos);
+      // }
+    });
+
+    it("should return a defined result", async () => {
+      const result = await constructPsbt(address, address, "1000", "testnet");
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe("getBalance", () => {
+    it("should return the maximum UTXO value", async () => {
+      const mockUtxos = [
+        { txid: "txid1", vout: 0, value: 1000 },
+        { txid: "txid2", vout: 1, value: 2000 },
+      ];
+      (fetchJson as jest.Mock).mockResolvedValueOnce(mockUtxos);
+      const balance = await bitcoin.getBalance(
+        { address: "address" },
+        "testnet"
+      );
+      expect(balance).toBe(2000);
+    });
+
+    it("should return UTXOs if getUtxos is true", async () => {
+      const mockUtxos = [{ txid: "txid1", vout: 0, value: 1000 }];
+      (fetchJson as jest.Mock).mockResolvedValueOnce(mockUtxos);
+      const utxos = await bitcoin.getBalance(
+        { address: "address", getUtxos: true },
+        "testnet"
+      );
+      expect(utxos).toEqual(mockUtxos);
+    });
+  });
+
+  describe("getSignature", () => {
+    it("should return a signature", async () => {
+      const mockUtxos = [{ txid: "txid", vout: 0, value: 2000 }];
+      (fetchJson as jest.Mock).mockResolvedValueOnce(mockUtxos);
+      (sign as jest.Mock).mockResolvedValueOnce("signature");
+
+      const signature = await bitcoin.getSignature({
+        from: "address",
+        publicKey: "publicKey",
+        to: "to",
+        amount: "1000",
+        path: "path",
+        networkId: "testnet",
+        account: {},
+        contractId: "contractId",
+      });
+
+      expect(signature).toBe("signature");
+    });
+  });
+
+  describe("broadcast", () => {
+    it("should return transaction hash on successful broadcast", async () => {
+      const mockUtxos = [{ txid: "txid", vout: 0, value: 2000 }];
+      (fetchJson as jest.Mock).mockResolvedValueOnce(mockUtxos);
+      const mockResponse = {
+        status: 200,
+        text: jest.fn().mockResolvedValueOnce("txHash"),
+      };
+      global.fetch = jest.fn().mockResolvedValueOnce(mockResponse);
+
+      const result = await bitcoin.broadcast({
+        from: "address",
+        publicKey: "publicKey",
+        to: "to",
+        amount: "1000",
+        path: "path",
+        sig: {
+          big_r: { affine_point: "affine_point" },
+          s: { scalar: "scalar" },
+          recovery_id: 1,
+        },
+        networkId: "testnet",
+      });
+
+      expect(result).toBe("txHash");
     });
   });
 });

@@ -4,11 +4,9 @@ import { ec as EC } from "elliptic";
 import { sha3_256 } from "js-sha3";
 import hash from "hash.js";
 import bs58check from "bs58check";
-import bech32 from "bech32";
+import { bech32 } from "bech32";
 import CryptoJS from "crypto-js";
-
 import { uncompressedHexPointToEvmAddress } from "./address";
-// import { NEAR_MAINNET_NETWORK_ID, NEAR_NETWORK_ID, NEAR_TESTNET_NETWORK_ID } from '../../../network';
 import {
   MPC_SIGNER_MAINNET,
   MPC_SIGNER_TESTNET,
