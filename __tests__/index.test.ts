@@ -6,23 +6,23 @@ import {
   NEAR_TESTNET_NETWORK_ID,
   ROOT_PUBLIC_KEY_MAINNET,
   ROOT_PUBLIC_KEY_TESTNET,
-} from "../src/constants";
+} from "../src/old/constants";
 import {
   AddressType,
   deriveChildPublicKey,
   generateAddress,
   getMpcAccountIdByNetwork,
   getRootPublicKey,
-} from "../src/kdf";
-import { initializeNear, sign } from "../src/near";
+} from "../src/old/kdf";
+import { initializeNear, sign } from "../src/old/near";
 import * as nearAPI from "near-api-js";
 import BN from "bn.js";
 import {
   bitcoin,
   constructPsbt,
   // recoverPubkeyFromSignature,
-} from "../src/bitcoin";
-import { fetchJson } from "../src/utils";
+} from "../src/old/bitcoin";
+import { fetchJson } from "../src/old/utils";
 // import * as bitcoinJs from "bitcoinjs-lib";
 
 const accountId = process.env.NEAR_ACCOUNT_ID || "default-account-id";
