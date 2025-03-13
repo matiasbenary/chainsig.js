@@ -65,11 +65,17 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
   }
 
   private parseSignature(signature: RSVSignature): ethers.SignatureLike {
-    return ethers.Signature.from({
+    // Ensure the s value is canonical
+    const s = BigInt(`0x${signature.s}`);
+    const secp256k1N = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141');
+    const secp256k1halfN = secp256k1N / BigInt(2);
+    const canonicalS = s > secp256k1halfN ? secp256k1N - s : s;
+
+    return {
       r: `0x${signature.r}`,
-      s: `0x${signature.s}`,
+      s: `0x${canonicalS.toString(16).padStart(64, '0')}`,
       v: signature.v,
-    })
+    };
   }
 
   async deriveAddressAndPublicKey(
@@ -102,11 +108,11 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
 
   async getBalance(address: string): Promise<string> {
     try {
-      const balance = await this.provider.getBalance(address)
-      return ethers.formatEther(balance)
+      const balance = await this.provider.getBalance(address);
+      return ethers.formatEther(balance);
     } catch (error) {
-      console.error(`Failed to fetch balance for address ${address}:`, error)
-      throw new Error('Failed to fetch balance.')
+      console.error(`Failed to fetch balance for address ${address}:`, error);
+      throw new Error('Failed to fetch balance.');
     }
   }
 
@@ -157,19 +163,22 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
     transaction: EVMUnsignedTransaction
     mpcSignatures: RSVSignature[]
   }): string {
-    return ethers.Transaction.from({
+    const signedTransaction = ethers.Transaction.from({
       ...transaction,
       signature: this.parseSignature(mpcSignatures[0]),
-    }).serialized
+    });
+
+    // Ensure the transaction is correctly serialized
+    return signedTransaction.serialized;
   }
 
   async broadcastTx(txSerialized: string): Promise<string> {
     try {
-      const txResponse = await this.provider.broadcastTransaction(txSerialized)
-      return txResponse.hash
+      const txResponse = await this.provider.broadcastTransaction(txSerialized);
+      return txResponse.hash;
     } catch (error) {
-      console.error('Transaction broadcast failed:', error)
-      throw new Error('Failed to broadcast transaction.')
+      console.error('Transaction broadcast failed:', error);
+      throw new Error('Failed to broadcast transaction.');
     }
   }
 }

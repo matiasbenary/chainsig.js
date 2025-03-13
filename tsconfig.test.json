@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "jest"],
+    "lib": ["dom", "es2020"],
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": {
+      "@chains": ["src/chains"],
+      "@chains/*": ["src/chains/*"],
+      "@utils": ["src/utils"],
+      "@utils/*": ["src/utils/*"]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "__tests__/**/*.ts",
+    "jest.setup.ts"
+  ]
+} 
