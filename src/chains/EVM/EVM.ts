@@ -165,10 +165,17 @@ export class EVM extends Chain<EVMTransactionRequest, EVMUnsignedTransaction> {
   }): string {
     const signedTransaction = ethers.Transaction.from({
       ...transaction,
+      type: 2,
       signature: this.parseSignature(mpcSignatures[0]),
     });
 
-    // Ensure the transaction is correctly serialized
+    // Ensure the 'to' property is undefined if null
+    const unsignedTransaction = {
+      ...signedTransaction,
+      to: signedTransaction.to || undefined,
+    };
+
+    // Correctly serialize the transaction using serializeTransaction
     return signedTransaction.serialized;
   }
 
