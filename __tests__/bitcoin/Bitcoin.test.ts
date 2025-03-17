@@ -1,9 +1,7 @@
 import * as bitcoinjs from 'bitcoinjs-lib';
 import BN from 'bn.js';
-import { Bitcoin } from '../../src/chains/Bitcoin/Bitcoin';
 import { BTCRpcAdapter } from '../../src/chains/Bitcoin/BTCRpcAdapter/BTCRpcAdapter';
 import { BaseChainSignatureContract } from '../../src/chains/ChainSignatureContract';
-import type { BTCNetworkIds } from '../../src/chains/Bitcoin/types';
 import type { UncompressedPubKeySEC1, MPCPayloads, RSVSignature } from '../../src/chains/types';
 import { Chain } from '../../src/chains/Chain';
 import type { BTCInput, BTCOutput, BTCTransactionRequest, BTCUnsignedTransaction } from '../../src/chains/Bitcoin/types';
