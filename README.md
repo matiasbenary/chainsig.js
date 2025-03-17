@@ -18,17 +18,17 @@ This library provides a unified interface for interacting with different blockch
 ## Installation
 
 ```bash
-npm install chainsig-sdk.js
+npm install chainsig.js
 # or
-yarn add chainsig-sdk.js
+yarn add chainsig.js
 # or
-pnpm add chainsig-sdk.js
+pnpm add chainsig.js
 ```
 
 ## Quick Example
 
 ```ts twoslash
-import { chainAdapters, contracts } from "chainsig-sdk.js";
+import { chainAdapters, contracts } from "chainsig.js";
 import { KeyPair, type KeyPairString } from "@near-js/crypto";
 import { createPublicClient, http } from "viem";
 import { mainnet } from "viem/chains";

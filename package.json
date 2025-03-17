@@ -1,7 +1,7 @@
 {
-  "name": "chainsig-sdk",
+  "name": "chainsig.js",
   "version": "1.0.12",
-  "description": "ChainSig SDK",
+  "description": "ChainSig Library",
   "type": "module",
   "files": [
     "dist",
