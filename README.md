@@ -39,7 +39,7 @@ const privateKey = process.env.NEAR_PRIVATE_KEY as KeyPairString;
 
 if (!accountId || !privateKey) {
   throw new Error(
-    "NEAR_ACCOUNT_ID and NEAR_PRIVATE_KEY must be set in environment"
+    "NEAR_ACCOUNT_ID and NEAR_PRIVATE_KEY must be set in environment",
   );
 }
 
@@ -65,7 +65,7 @@ const evmChain = new chainAdapters.evm.EVM({
 // Derive address and public key
 const { address, publicKey } = await evmChain.deriveAddressAndPublicKey(
   accountId,
-  "any_string"
+  "any_string",
 );
 
 // Check balance
@@ -95,15 +95,3 @@ const signedTx = evmChain.finalizeTransactionSigning({
 // Broadcast transaction
 const txHash = await evmChain.broadcastTx(signedTx);
 ```
-
-## Documentation
-
-For detailed documentation, including:
-
-- Getting started guide
-- Chain-specific implementations
-- MPC system overview
-- Implementation guides
-- API reference
-
-Visit our [documentation site](https://docs.sig.network/).
