@@ -43,14 +43,12 @@
   "author": "Greg Prouty",
   "license": "ISC",
   "devDependencies": {
-    "@types/bitcoinjs-lib": "^5.0.4",
     "@types/bn.js": "^5.1.6",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.13.10",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^8.25.0",
     "babel-jest": "^29.7.0",
-    "bitcoinjs-lib": "^6.1.7",
     "dotenv": "^16.4.7",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
@@ -69,6 +67,8 @@
     "vocs": "1.0.0-alpha.62"
   },
   "dependencies": {
+    "bitcoinjs-lib": "^6.1.7",
+    "@types/bitcoinjs-lib": "^5.0.4",
     "@cosmjs/amino": "^0.33.0",
     "@cosmjs/crypto": "^0.32.4",
     "@cosmjs/encoding": "^0.32.4",
