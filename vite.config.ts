@@ -5,7 +5,7 @@ import { defineConfig, type UserConfig } from "vite";
 import dts from "vite-plugin-dts";
 
 const pkg = JSON.parse(
-  readFileSync(new URL("./package.json", import.meta.url), "utf8")
+  readFileSync(new URL("./package.json", import.meta.url), "utf8"),
 ) as {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
@@ -28,10 +28,18 @@ const external = [
 const getCommonConfig = (mode: string): UserConfig => ({
   build: {
     lib: {
-      entry: resolve(__dirname, "src/index.ts"),
+      entry: {
+        index: resolve(__dirname, "src/index.ts"),
+        chainAdapters: resolve(
+          __dirname,
+          "src/chains/Bitcoin/BTCRpcAdapter/index.ts",
+        ),
+        contracts: resolve(__dirname, "src/chains/ChainSignatureContract.ts"),
+        constants: resolve(__dirname, "src/utils/chains/near/constants.ts"),
+      },
       formats: ["es", "cjs"],
-      fileName: (format) =>
-        `${mode}/index.${mode}.${format === "es" ? "js" : "cjs"}`,
+      fileName: (format, entryName) =>
+        `${mode}/${entryName}.${mode}.${format === "es" ? "js" : "cjs"}`,
     },
     emptyOutDir: false,
     sourcemap: true,
@@ -48,6 +56,8 @@ const getCommonConfig = (mode: string): UserConfig => ({
           constBindings: true,
           objectShorthand: true,
         },
+        preserveModules: true,
+        preserveModulesRoot: "src",
       },
     },
     outDir: "dist",

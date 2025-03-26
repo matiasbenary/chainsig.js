@@ -1,6 +1,6 @@
 {
   "name": "chainsig.js",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "ChainSig Library",
   "type": "module",
   "files": [
@@ -20,7 +20,10 @@
         "require": "./dist/node/index.node.cjs"
       },
       "default": "./dist/browser/index.browser.js"
-    }
+    },
+    "./chainAdapters": "./dist/chains/Bitcoin/BTCRpcAdapter/index.js",
+    "./contracts": "./dist/chains/ChainSignatureContract.js",
+    "./constants": "./dist/utils/chains/near/constants.js"
   },
   "main": "./dist/node/index.node.cjs",
   "module": "./dist/node/index.node.js",
