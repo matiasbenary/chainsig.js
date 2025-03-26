@@ -28,18 +28,10 @@ const external = [
 const getCommonConfig = (mode: string): UserConfig => ({
   build: {
     lib: {
-      entry: {
-        index: resolve(__dirname, "src/index.ts"),
-        chainAdapters: resolve(
-          __dirname,
-          "src/chains/Bitcoin/BTCRpcAdapter/index.ts",
-        ),
-        contracts: resolve(__dirname, "src/chains/ChainSignatureContract.ts"),
-        constants: resolve(__dirname, "src/utils/chains/near/constants.ts"),
-      },
+      entry: resolve(__dirname, "src/index.ts"),
       formats: ["es", "cjs"],
-      fileName: (format, entryName) =>
-        `${mode}/${entryName}.${mode}.${format === "es" ? "js" : "cjs"}`,
+      fileName: (format) =>
+        `${mode}/index.${mode}.${format === "es" ? "js" : "cjs"}`,
     },
     emptyOutDir: false,
     sourcemap: true,

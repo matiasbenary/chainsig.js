@@ -1,7 +1,17 @@
 export * as chains from "./chains";
 export * as utils from "./utils";
 
-// Export specific chains and their adapters
-export { BTCRpcAdapter as chainAdapters } from "./chains/Bitcoin/BTCRpcAdapter";
-export { ChainSignatureContract as contracts } from "./chains/ChainSignatureContract";
-export { NEAR_MAX_GAS as constants } from "./utils/chains/near/constants";
+// Import modules
+import { BTCRpcAdapter } from "./chains/Bitcoin/BTCRpcAdapter";
+import { ChainSignatureContract } from "./chains/ChainSignatureContract";
+import { NEAR_MAX_GAS } from "./utils/chains/near/constants";
+
+// Export specific modules
+export { BTCRpcAdapter } from "./chains/Bitcoin/BTCRpcAdapter";
+export { ChainSignatureContract } from "./chains/ChainSignatureContract";
+export { NEAR_MAX_GAS } from "./utils/chains/near/constants";
+
+// Export named modules for compatibility
+export const chainAdapters = { BTCRpcAdapter: BTCRpcAdapter };
+export const contracts = { ChainSignatureContract: ChainSignatureContract };
+export const constants = { NEAR_MAX_GAS: NEAR_MAX_GAS };
