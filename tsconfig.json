@@ -33,7 +33,13 @@
       "@chains": ["src/chains"],
       "@chains/*": ["src/chains/*"],
       "@utils": ["src/utils"],
-      "@utils/*": ["src/utils/*"]
+      "@utils/*": ["src/utils/*"],
+      "@constants": ["src/constants"],
+      "@types": ["src/types"],
+      "@contracts": ["src/contracts"],
+      "@contracts/*": ["src/contracts/*"],
+      "@chain-adapters": ["src/chain-adapters"],
+      "@chain-adapters/*": ["src/chain-adapters/*"]
     } /* Specify a set of entries that re-map imports to additional lookup locations. */,
     // "rootDirs": [],                                   /* Allow multiple folders to be treated as one when resolving modules. */
     // "typeRoots": [],                                  /* Specify multiple folders that act like './node_modules/@types'. */

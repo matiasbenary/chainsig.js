@@ -58,6 +58,10 @@ const getCommonConfig = (mode: string): UserConfig => ({
     alias: {
       "@chains": resolve(__dirname, "./src/chains"),
       "@utils": resolve(__dirname, "./src/utils"),
+      "@constants": resolve(__dirname, "./src/constants"),
+      "@types": resolve(__dirname, "./src/types"),
+      "@contracts": resolve(__dirname, "./src/contracts"),
+      "@chain-adapters": resolve(__dirname, "./src/chain-adapters"),
     },
   },
 });
