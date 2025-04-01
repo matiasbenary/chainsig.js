@@ -1,37 +1,32 @@
-import { najToUncompressedPubKeySEC1 } from "@utils/cryptography";
-import { getRootPublicKey } from "@utils/publicKey";
-import BN from "bn.js";
-import {
-  withRetry,
-  type PublicClient,
-  type WalletClient,
-  type Hex,
-} from "viem";
+import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
+import { getRootPublicKey } from '@utils/publicKey'
+import BN from 'bn.js'
+import { withRetry, type PublicClient, type WalletClient, type Hex } from 'viem'
 
-import { CHAINS, KDF_CHAIN_IDS } from "@constants";
-import { ChainSignatureContract as AbstractChainSignatureContract } from "@contracts/ChainSignatureContract";
-import type { SignArgs } from "@contracts/ChainSignatureContract";
+import { CHAINS, KDF_CHAIN_IDS } from '@constants'
+import { ChainSignatureContract as AbstractChainSignatureContract } from '@contracts/ChainSignatureContract'
+import type { SignArgs } from '@contracts/ChainSignatureContract'
 import type {
   NajPublicKey,
   RSVSignature,
-  SigNetEvmMpcSignature,
+  ChainSigEvmMpcSignature,
   UncompressedPubKeySEC1,
-} from "@types";
-import { cryptography } from "@utils";
+} from '@types'
+import { cryptography } from '@utils'
 
-import { abi } from "./ChainSignaturesContractABI";
+import { abi } from './ChainSignaturesContractABI'
 import {
   SignatureNotFoundError,
   SignatureContractError,
   SigningError,
-} from "./errors";
+} from './errors'
 import type {
   RequestIdArgs,
   SignOptions,
   SignRequest,
   SignatureErrorData,
-} from "./types";
-import { getRequestId } from "./utils";
+} from './types'
+import { getRequestId } from './utils'
 
 /**
  * Implementation of the ChainSignatureContract for EVM chains.
@@ -42,10 +37,10 @@ import { getRequestId } from "./utils";
  * for the signature using the requestId.
  */
 export class ChainSignatureContract extends AbstractChainSignatureContract {
-  private readonly publicClient: PublicClient;
-  private readonly walletClient: WalletClient;
-  private readonly contractAddress: Hex;
-  private readonly rootPublicKey: NajPublicKey;
+  private readonly publicClient: PublicClient
+  private readonly walletClient: WalletClient
+  private readonly contractAddress: Hex
+  private readonly rootPublicKey: NajPublicKey
 
   /**
    * Creates a new instance of the ChainSignatureContract for EVM chains.
@@ -57,65 +52,65 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    * @param args.rootPublicKey - Optional root public key. If not provided, it will be derived from the contract address
    */
   constructor(args: {
-    publicClient: PublicClient;
-    walletClient: WalletClient;
-    contractAddress: Hex;
-    rootPublicKey?: NajPublicKey;
+    publicClient: PublicClient
+    walletClient: WalletClient
+    contractAddress: Hex
+    rootPublicKey?: NajPublicKey
   }) {
-    super();
-    this.publicClient = args.publicClient;
-    this.walletClient = args.walletClient;
-    this.contractAddress = args.contractAddress;
+    super()
+    this.publicClient = args.publicClient
+    this.walletClient = args.walletClient
+    this.contractAddress = args.contractAddress
 
     const rootPublicKey =
       args.rootPublicKey ||
-      getRootPublicKey(this.contractAddress, CHAINS.ETHEREUM);
+      getRootPublicKey(this.contractAddress, CHAINS.ETHEREUM)
 
     if (!rootPublicKey) {
       throw new Error(
-        `Invalid public key, please provide a valid root public key or contract address`,
-      );
+        `Invalid public key, please provide a valid root public key or contract address`
+      )
     }
 
-    this.rootPublicKey = rootPublicKey;
+    this.rootPublicKey = rootPublicKey
   }
 
   async getCurrentSignatureDeposit(): Promise<BN> {
     const deposit = (await this.publicClient.readContract({
       address: this.contractAddress,
       abi,
-      functionName: "getSignatureDeposit",
-    })) as bigint;
+      functionName: 'getSignatureDeposit',
+    })) as bigint
 
-    return new BN(deposit.toString());
+    return new BN(deposit.toString())
   }
 
   async getDerivedPublicKey(args: {
-    path: string;
-    predecessor: string;
+    path: string
+    predecessor: string
   }): Promise<UncompressedPubKeySEC1> {
     const pubKey = cryptography.deriveChildPublicKey(
       await this.getPublicKey(),
       args.predecessor.toLowerCase(),
       args.path,
-      KDF_CHAIN_IDS.ETHEREUM,
-    );
+      KDF_CHAIN_IDS.ETHEREUM
+    )
 
-    return pubKey;
+    return pubKey
   }
 
   async getPublicKey(): Promise<UncompressedPubKeySEC1> {
-    return najToUncompressedPubKeySEC1(this.rootPublicKey);
+    return najToUncompressedPubKeySEC1(this.rootPublicKey)
   }
 
   async getLatestKeyVersion(): Promise<number> {
     const version = (await this.publicClient.readContract({
       address: this.contractAddress,
       abi,
-      functionName: "latestKeyVersion",
-    })) as bigint;
+      functionName: 'latestKeyVersion',
+    })) as bigint
 
-    return Number(version);
+    return Number(version)
   }
 
   /**
@@ -127,28 +122,28 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     args: SignArgs,
     options: SignOptions = {
       sign: {
-        algo: "",
-        dest: "",
-        params: "",
+        algo: '',
+        dest: '',
+        params: '',
       },
       retry: {
         delay: 5000,
         retryCount: 12,
       },
-    },
+    }
   ): Promise<RSVSignature> {
     if (!this.walletClient?.account) {
-      throw new Error("Wallet client required for signing operations");
+      throw new Error('Wallet client required for signing operations')
     }
 
     const request: SignRequest = {
-      payload: `0x${Buffer.from(args.payload).toString("hex")}`,
+      payload: `0x${Buffer.from(args.payload).toString('hex')}`,
       path: args.path,
       keyVersion: args.key_version,
-      algo: options.sign.algo ?? "",
-      dest: options.sign.dest ?? "",
-      params: options.sign.params ?? "",
-    };
+      algo: options.sign.algo ?? '',
+      dest: options.sign.dest ?? '',
+      params: options.sign.params ?? '',
+    }
 
     const requestId = this.getRequestId({
       ...request,
@@ -156,34 +151,34 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       chainId: this.publicClient.chain?.id
         ? BigInt(this.publicClient.chain.id)
         : 0n,
-    });
+    })
 
     const hash = await this.walletClient.writeContract({
       address: this.contractAddress,
       abi,
       chain: this.publicClient.chain,
       account: this.walletClient.account,
-      functionName: "sign",
+      functionName: 'sign',
       args: [request],
       value: BigInt((await this.getCurrentSignatureDeposit()).toString()),
-    });
+    })
 
-    const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
+    const receipt = await this.publicClient.waitForTransactionReceipt({ hash })
 
     try {
       const result = await withRetry(
         async () => {
           const result = await this.getSignatureFromEvents(
             requestId,
-            receipt.blockNumber,
-          );
+            receipt.blockNumber
+          )
 
           // TODO: Validate if this is the signature corresponding to the transaction as anybody can call respond on the contract
 
           if (result) {
-            return result;
+            return result
           } else {
-            throw new Error("Signature not found yet");
+            throw new Error('Signature not found yet')
           }
         },
         {
@@ -192,24 +187,24 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
           shouldRetry: ({ count, error }) => {
             // TODO: Should be enabled only on debug mode
             console.log(
-              `Retrying get signature: ${count}/${options.retry.retryCount}`,
-            );
-            return error.message === "Signature not found yet";
+              `Retrying get signature: ${count}/${options.retry.retryCount}`
+            )
+            return error.message === 'Signature not found yet'
           },
-        },
-      );
+        }
+      )
 
       if (result) {
-        return result;
+        return result
       } else {
         const errorData = await this.getErrorFromEvents(
           requestId,
-          receipt.blockNumber,
-        );
+          receipt.blockNumber
+        )
         if (errorData) {
-          throw new SignatureContractError(errorData.error, requestId, receipt);
+          throw new SignatureContractError(errorData.error, requestId, receipt)
         } else {
-          throw new SignatureNotFoundError(requestId, receipt);
+          throw new SignatureNotFoundError(requestId, receipt)
         }
       }
     } catch (error) {
@@ -217,13 +212,13 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         error instanceof SignatureNotFoundError ||
         error instanceof SignatureContractError
       ) {
-        throw error;
+        throw error
       } else {
         throw new SigningError(
           requestId,
           receipt,
-          error instanceof Error ? error : undefined,
-        );
+          error instanceof Error ? error : undefined
+        )
       }
     }
   }
@@ -258,35 +253,35 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    * ```
    */
   getRequestId(request: RequestIdArgs): Hex {
-    return getRequestId(request);
+    return getRequestId(request)
   }
 
   async getErrorFromEvents(
     requestId: Hex,
-    fromBlock: bigint,
+    fromBlock: bigint
   ): Promise<SignatureErrorData | undefined> {
     const errorLogs = await this.publicClient.getContractEvents({
       address: this.contractAddress,
       abi,
-      eventName: "SignatureError",
+      eventName: 'SignatureError',
       args: {
         requestId,
       },
       fromBlock,
-      toBlock: "latest",
-    });
+      toBlock: 'latest',
+    })
 
     if (errorLogs.length > 0) {
       const { args: errorData } = errorLogs[
         errorLogs.length - 1
       ] as unknown as {
-        args: SignatureErrorData;
-      };
+        args: SignatureErrorData
+      }
 
-      return errorData;
+      return errorData
     }
 
-    return undefined;
+    return undefined
   }
 
   /**
@@ -300,29 +295,29 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    */
   async getSignatureFromEvents(
     requestId: Hex,
-    fromBlock: bigint,
+    fromBlock: bigint
   ): Promise<RSVSignature | undefined> {
     const logs = await this.publicClient.getContractEvents({
       address: this.contractAddress,
       abi,
-      eventName: "SignatureResponded",
+      eventName: 'SignatureResponded',
       args: {
         requestId,
       },
       fromBlock,
-      toBlock: "latest",
-    });
+      toBlock: 'latest',
+    })
 
     if (logs.length > 0) {
       const { args: signatureData } = logs[logs.length - 1] as unknown as {
         args: {
-          signature: SigNetEvmMpcSignature;
-        };
-      };
+          signature: ChainSigEvmMpcSignature
+        }
+      }
 
-      return cryptography.toRSV(signatureData.signature);
+      return cryptography.toRSV(signatureData.signature)
     }
 
-    return undefined;
+    return undefined
   }
 }

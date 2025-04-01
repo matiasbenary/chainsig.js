@@ -28,13 +28,13 @@ export interface NearNearMpcSignature {
   recovery_id: number
 }
 
-export interface SigNetNearMpcSignature {
+export interface ChainSigNearMpcSignature {
   big_r: string
   s: string
   recovery_id: number
 }
 
-export interface SigNetEvmMpcSignature {
+export interface ChainSigEvmMpcSignature {
   bigR: { x: bigint; y: bigint }
   s: bigint
   recoveryId: number
@@ -42,5 +42,5 @@ export interface SigNetEvmMpcSignature {
 
 export type MPCSignature =
   | NearNearMpcSignature
-  | SigNetNearMpcSignature
-  | SigNetEvmMpcSignature
+  | ChainSigNearMpcSignature
+  | ChainSigEvmMpcSignature
