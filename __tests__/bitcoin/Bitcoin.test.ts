@@ -1,213 +1,289 @@
-import * as bitcoinjs from 'bitcoinjs-lib';
-import BN from 'bn.js';
-import { BTCRpcAdapter } from '../../src/chains/Bitcoin/BTCRpcAdapter/BTCRpcAdapter';
-import { BaseChainSignatureContract } from '../../src/chains/ChainSignatureContract';
-import type { UncompressedPubKeySEC1, MPCPayloads, RSVSignature } from '../../src/chains/types';
-import { Chain } from '../../src/chains/Chain';
-import type { BTCInput, BTCOutput, BTCTransactionRequest, BTCUnsignedTransaction } from '../../src/chains/Bitcoin/types';
+import { jest } from '@jest/globals'
+import * as bitcoinjs from 'bitcoinjs-lib'
+import BN from 'bn.js'
+
+// import { Bitcoin } from '../../src/chain-adapters/Bitcoin/Bitcoin'
+import { BTCRpcAdapter } from '../../src/chain-adapters/Bitcoin/BTCRpcAdapter/BTCRpcAdapter'
+import type {
+  BTCInput,
+  BTCOutput,
+  BTCTransactionRequest,
+  BTCUnsignedTransaction,
+} from '../../src/chain-adapters/Bitcoin/types'
+import { ChainAdapter } from '../../src/chain-adapters/ChainAdapter'
+// import { BaseChainSignatureContract } from '../../src/contracts/ChainSignatureContract'
+import type { RSVSignature, KeyDerivationPath } from '../../src/types'
 
 // Use testnet for valid address generation
-const network = bitcoinjs.networks.testnet;
-const testAddress = 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx';
+const network = bitcoinjs.networks.testnet
+const testAddress = 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx'
 
 // Create P2WPKH script
 const p2wpkh = bitcoinjs.payments.p2wpkh({
   address: testAddress,
-  network
-});
+  network,
+})
 
 // Mock implementations
 class MockBTCRpcAdapter extends BTCRpcAdapter {
   async selectUTXOs(): Promise<{ inputs: BTCInput[]; outputs: BTCOutput[] }> {
     return {
-      inputs: [{
-        txid: 'a'.repeat(64),
-        vout: 0,
-        value: 100000,
-        scriptPubKey: p2wpkh.output!
-      }],
-      outputs: [{ address: testAddress, value: 90000 }]
-    };
+      inputs: [
+        {
+          txid: 'a'.repeat(64),
+          vout: 0,
+          value: 100000,
+          scriptPubKey: p2wpkh.output || Buffer.from(''),
+        },
+      ],
+      outputs: [{ address: testAddress, value: 90000 }],
+    }
   }
-  async broadcastTransaction(txHex: string): Promise<string> { return 'mock_txid'; }
-  async getBalance(): Promise<number> { return 100000; }
-  async getTransaction() {
-    return { vout: [{ scriptpubkey: p2wpkh.output!.toString('hex'), value: 100000 }] };
+
+  async broadcastTransaction(txHex: string): Promise<string> {
+    return 'mock_txid'
+  }
+
+  async getBalance(): Promise<number> {
+    return 100000
+  }
+
+  async getTransaction(): Promise<{
+    vout: Array<{ scriptpubkey: string; value: number }>
+  }> {
+    return {
+      vout: [
+        {
+          scriptpubkey: (p2wpkh.output || Buffer.from('')).toString('hex'),
+          value: 100000,
+        },
+      ],
+    }
   }
 }
 
-class MockChainSignatureContract extends BaseChainSignatureContract {
-  async getCurrentSignatureDeposit(): Promise<BN> {
-    return new BN(0);
-  }
-  
-  async getDerivedPublicKey(): Promise<UncompressedPubKeySEC1> {
-    return `04${'a'.repeat(128)}` as UncompressedPubKeySEC1;
-  }
-}
+// class MockChainSignatureContract extends BaseChainSignatureContract {
+//   async getCurrentSignatureDeposit(): Promise<BN> {
+//     return new BN(0)
+//   }
+
+//   async getDerivedPublicKey(): Promise<UncompressedPubKeySEC1> {
+//     return `04${'a'.repeat(128)}`
+//   }
+// }
 
 // Mock localStorage
-global.localStorage = {
+const mockLocalStorage = {
   getItem: jest.fn(),
   setItem: jest.fn(),
   removeItem: jest.fn(),
   clear: jest.fn(),
   length: 0,
-  key: jest.fn()
-};
+  key: jest.fn(),
+}
 
-jest.mock('../../src/chains/Bitcoin/Bitcoin.ts', () => {
-  const originalModule = jest.requireActual('../../src/chains/Bitcoin/Bitcoin.ts');
-  return {
-    ...originalModule,
-    Bitcoin: class extends originalModule.Bitcoin {
-      setTransaction(transaction: any, storageKey: string): void {
-        global.localStorage.setItem(storageKey, JSON.stringify({
-          psbt: transaction.psbt.toBase64(),
-          publicKey: transaction.publicKey
-        }));
-      }
-    }
-  };
-});
+// Assign to global
+Object.defineProperty(global, 'localStorage', {
+  value: mockLocalStorage,
+  writable: true,
+})
 
 // Mock Bitcoin class
-class TestBitcoin extends Chain<BTCTransactionRequest, BTCUnsignedTransaction> {
+class TestBitcoin extends ChainAdapter<
+  BTCTransactionRequest,
+  BTCUnsignedTransaction
+> {
   constructor(params: { btcRpcAdapter: BTCRpcAdapter }) {
-    super();
-    this.btcRpcAdapter = params.btcRpcAdapter;
+    super()
+    this.btcRpcAdapter = params.btcRpcAdapter
   }
 
-  private btcRpcAdapter: BTCRpcAdapter;
+  private readonly btcRpcAdapter: BTCRpcAdapter
 
-  async getBalance(address: string): Promise<string> {
-    const sats = await this.btcRpcAdapter.getBalance(address);
-    return (sats / 100000000).toString();
+  async getBalance(
+    address: string
+  ): Promise<{ balance: bigint; decimals: number }> {
+    const balance = await this.btcRpcAdapter.getBalance(address)
+    return {
+      balance: BigInt(balance),
+      decimals: 8,
+    }
   }
 
-  async deriveAddressAndPublicKey(predecessor: string, path: string): Promise<{
-    address: string;
-    publicKey: string;
+  async deriveAddressAndPublicKey(
+    predecessor: string,
+    path: KeyDerivationPath
+  ): Promise<{
+    address: string
+    publicKey: string
   }> {
-    return { address: testAddress, publicKey: 'mock_key' };
+    return {
+      address: testAddress,
+      publicKey: '04'.padEnd(130, 'a'),
+    }
   }
 
-  setTransaction(transaction: BTCUnsignedTransaction, storageKey: string): void {
-    global.localStorage.setItem(storageKey, JSON.stringify({
-      psbt: transaction.psbt.toBase64(),
-      publicKey: transaction.publicKey
-    }));
+  setTransaction(
+    transaction: BTCUnsignedTransaction,
+    storageKey: string
+  ): void {
+    mockLocalStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        psbt: transaction.psbt.toBase64(),
+        publicKey: transaction.publicKey,
+      })
+    )
   }
 
   getTransaction(storageKey: string): BTCUnsignedTransaction | undefined {
-    const data = global.localStorage.getItem(storageKey);
-    if (!data) return undefined;
-    const parsed = JSON.parse(data);
+    const stored = mockLocalStorage.getItem(storageKey)
+    if (!stored) return undefined
+
+    const parsed = JSON.parse(stored as string)
+    if (
+      typeof parsed !== 'object' ||
+      !parsed ||
+      !('psbt' in parsed) ||
+      !('publicKey' in parsed)
+    ) {
+      return undefined
+    }
+
+    const { psbt, publicKey } = parsed
     return {
-      psbt: bitcoinjs.Psbt.fromBase64(parsed.psbt),
-      publicKey: parsed.publicKey
-    };
+      psbt: bitcoinjs.Psbt.fromBase64(psbt as string),
+      publicKey: publicKey as string,
+    }
   }
 
-  async getMPCPayloadAndTransaction(request: BTCTransactionRequest): Promise<{ 
-    transaction: BTCUnsignedTransaction; 
-    mpcPayloads: MPCPayloads;
+  async getMPCPayloadAndTransaction(request: BTCTransactionRequest): Promise<{
+    transaction: BTCUnsignedTransaction
+    mpcPayloads: any
   }> {
-    const psbt = new bitcoinjs.Psbt({ network });
+    // const { inputs, outputs } = await this.btcRpcAdapter.selectUTXOs()
     return {
-      transaction: { psbt, publicKey: request.publicKey },
-      mpcPayloads: [[1, 2, 3]]
-    };
+      transaction: {
+        psbt: new bitcoinjs.Psbt({ network: bitcoinjs.networks.testnet }),
+        publicKey: '04'.padEnd(130, 'a'),
+      },
+      mpcPayloads: {},
+    }
   }
 
-  addSignature(params: { 
-    transaction: BTCUnsignedTransaction; 
-    mpcSignatures: RSVSignature[] 
+  addSignature(params: {
+    transaction: BTCUnsignedTransaction
+    mpcSignatures: RSVSignature[]
   }): string {
-    return 'deadbeef'.repeat(8);
+    return 'signed_tx_hex'
   }
 
-  async broadcastTx(tx: string): Promise<string> {
-    return await this.btcRpcAdapter.broadcastTransaction(tx);
+  async broadcastTx(tx: string): Promise<{ hash: string }> {
+    const txId = await this.btcRpcAdapter.broadcastTransaction(tx)
+    return { hash: txId }
+  }
+
+  serializeTransaction(transaction: BTCUnsignedTransaction): string {
+    return JSON.stringify(transaction)
+  }
+
+  deserializeTransaction(serialized: string): BTCUnsignedTransaction {
+    return JSON.parse(serialized)
+  }
+
+  async prepareTransactionForSigning(
+    transactionRequest: BTCTransactionRequest
+  ): Promise<{
+    transaction: BTCUnsignedTransaction
+    hashesToSign: any[]
+  }> {
+    return {
+      transaction: {
+        psbt: new bitcoinjs.Psbt({ network: bitcoinjs.networks.testnet }),
+        publicKey: '04'.padEnd(130, 'a'),
+      },
+      hashesToSign: [],
+    }
+  }
+
+  finalizeTransactionSigning(params: {
+    transaction: BTCUnsignedTransaction
+    rsvSignatures: RSVSignature[]
+  }): string {
+    return 'signed_tx_hex'
   }
 }
 
 describe('Bitcoin', () => {
-  let btc: TestBitcoin;
-  let mockContract: MockChainSignatureContract;
-  let mockAdapter: MockBTCRpcAdapter;
+  let bitcoin: TestBitcoin
+  let btcRpcAdapter: MockBTCRpcAdapter
 
   beforeEach(() => {
-    mockContract = new MockChainSignatureContract();
-    mockAdapter = new MockBTCRpcAdapter();
-    btc = new TestBitcoin({
-      btcRpcAdapter: mockAdapter
-    });
-  });
+    btcRpcAdapter = new MockBTCRpcAdapter()
+    bitcoin = new TestBitcoin({ btcRpcAdapter })
+  })
 
-  describe('deriveAddressAndPublicKey', () => {
-    it('should derive correct address and public key', async () => {
-      const result = await btc.deriveAddressAndPublicKey(
-        'predecessor',
-        "m/44'/0'/0'/0/0"
-      );
+  it('should get balance', async () => {
+    const balance = await bitcoin.getBalance(testAddress)
+    expect(balance.balance.toString()).toBe('100000')
+    expect(balance.decimals).toBe(8)
+  })
 
-      expect(result).toHaveProperty('address');
-      expect(result).toHaveProperty('publicKey');
-      expect(result.address).toMatch(/^(tb1|[mn])[a-zA-Z0-9]+$/); // testnet address format
-    });
-  });
+  it('should derive address and public key', async () => {
+    const { address, publicKey } = await bitcoin.deriveAddressAndPublicKey(
+      'predecessor',
+      { index: 0, scheme: 'secp256k1' }
+    )
+    expect(address).toBe(testAddress)
+    expect(publicKey).toBe('04'.padEnd(130, 'a'))
+  })
 
-  describe('getBalance', () => {
-    it('should return balance in BTC format', async () => {
-      const balance = await btc.getBalance('mock_address');
-      expect(balance).toBe('0.001'); // 100000 satoshis = 0.001 BTC
-    });
-  });
+  it('should set and get transaction', () => {
+    const storageKey = 'test_key'
+    const transaction: BTCUnsignedTransaction = {
+      psbt: new bitcoinjs.Psbt({ network: bitcoinjs.networks.testnet }),
+      publicKey: '04'.padEnd(130, 'a'),
+    }
 
-  describe('transaction operations', () => {
-    const mockTxRequest = {
-      publicKey: 'mock_public_key',
-      from: 'mock_from_address',
-      to: 'mock_to_address',
-      value: '0.0009'
-    };
+    bitcoin.setTransaction(transaction, storageKey)
+    const retrieved = bitcoin.getTransaction(storageKey)
 
-    it('should create transaction and MPC payloads', async () => {
-      const { transaction, mpcPayloads } = await btc.getMPCPayloadAndTransaction({
-        publicKey: 'a'.repeat(66),
-        from: testAddress,
-        to: testAddress,
-        value: '0.0009'
-      });
-      
-      expect(transaction).toBeDefined();
-      expect(mpcPayloads.length).toBeGreaterThan(0);
-    });
+    expect(retrieved).toBeDefined()
+    expect(retrieved?.publicKey).toBe(transaction.publicKey)
+  })
 
-    it('should handle localStorage operations', () => {
-      const psbt = new bitcoinjs.Psbt({ network });
-      btc.setTransaction({ 
-        psbt,
-        publicKey: 'mock_key'
-      }, 'test_key');
-      
-      expect(global.localStorage.setItem).toHaveBeenCalled();
-    });
+  it('should prepare transaction for signing', async () => {
+    const request: BTCTransactionRequest = {
+      from: testAddress,
+      to: testAddress,
+      value: new BN('10000').toString(),
+      publicKey: '04'.padEnd(130, 'a'),
+    }
 
-    it('should return valid hex for signed transaction', () => {
-      const signedTxHex = btc.addSignature({
-        transaction: {
-          psbt: new bitcoinjs.Psbt({ network }),
-          publicKey: 'mock_key'
-        },
-        mpcSignatures: [{
-          r: 'a'.repeat(64),
-          s: 'b'.repeat(64),
-          v: 0
-        }]
-      });
-      expect(signedTxHex).toMatch(/^[0-9a-f]+$/i);
-    });
-  });
-});
+    const { transaction, mpcPayloads } =
+      await bitcoin.getMPCPayloadAndTransaction(request)
+
+    expect(transaction).toBeDefined()
+    expect(mpcPayloads).toBeDefined()
+  })
+
+  it('should add signature to transaction', () => {
+    const transaction: BTCUnsignedTransaction = {
+      psbt: new bitcoinjs.Psbt({ network: bitcoinjs.networks.testnet }),
+      publicKey: '04'.padEnd(130, 'a'),
+    }
+
+    const signedTx = bitcoin.addSignature({
+      transaction,
+      mpcSignatures: [{ r: 'a'.repeat(64), s: 'b'.repeat(64), v: 27 }],
+    })
+
+    expect(signedTx).toBe('signed_tx_hex')
+  })
+
+  it('should broadcast transaction', async () => {
+    const txHex = '01000000000000000000'
+    const txId = await bitcoin.broadcastTx(txHex)
+    expect(txId.hash).toBe('mock_txid')
+  })
+})

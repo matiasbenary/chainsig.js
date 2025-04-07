@@ -10,7 +10,10 @@ export type UncompressedPubKeySEC1 = `04${string}`
 
 export type CompressedPubKeySEC1 = `02${string}` | `03${string}`
 
-export type KeyDerivationPath = string
+export interface KeyDerivationPath {
+  index: number
+  scheme: 'secp256k1' | 'ed25519'
+}
 
 export interface RSVSignature {
   r: string

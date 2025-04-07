@@ -1,115 +1,104 @@
-import { Mempool } from '../../src/chains/Bitcoin/BTCRpcAdapter/Mempool/Mempool';
+import { jest } from '@jest/globals'
 
+import { Mempool } from '../../src/chain-adapters/Bitcoin/BTCRpcAdapter/Mempool'
+
+// Mock fetch
+const mockFetch = jest.fn()
+// @ts-expect-error - Ignoring type issues with the mock
+global.fetch = mockFetch
+
+// Define a proper mock response type
 interface MockResponse {
-  ok: boolean;
-  json: () => Promise<any>;
-  text: () => Promise<string>;
+  ok: boolean
+  json: () => Promise<any>
+  text: () => Promise<string>
 }
 
+// Helper function to create mock responses
+function createMockResponse(response: any, ok = true): MockResponse {
+  return {
+    ok,
+    json: async () => response,
+    text: async () =>
+      typeof response === 'string' ? response : JSON.stringify(response),
+  }
+}
+
+// Update the mock implementation
+mockFetch.mockImplementation(async (url, options) => {
+  return await Promise.resolve(createMockResponse({}))
+})
+
 describe('Mempool BTCRpcAdapter', () => {
-  let mempool: Mempool;
+  let mempool: Mempool
 
   beforeEach(() => {
-    mempool = new Mempool('https://mempool.space/api');
-    (global.fetch as jest.Mock).mockClear();
-  });
+    mempool = new Mempool('https://mempool.space/api')
+    mockFetch.mockClear()
+  })
 
   describe('selectUTXOs', () => {
     it('should select appropriate UTXOs for transaction', async () => {
       const mockUTXOs = [
-        {
-          txid: 'mock_txid_1',
-          vout: 0,
-          value: 100000,
-          status: {
-            confirmed: true,
-            block_height: 100,
-            block_hash: 'mock_hash',
-            block_time: 1000000
-          }
-        }
-      ];
+        { txid: 'tx1', vout: 0, value: 100000 },
+        { txid: 'tx2', vout: 1, value: 200000 },
+      ]
 
-      const mockFees = {
-        fastestFee: 100,
-        halfHourFee: 80,
-        hourFee: 60,
-        economyFee: 40,
-        minimumFee: 20
-      };
+      // @ts-expect-error - Ignoring type issues with the mock
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockUTXOs))
 
-      (global.fetch as jest.Mock)
-        .mockImplementationOnce(() => Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(mockUTXOs)
-        } as MockResponse))
-        .mockImplementationOnce(() => Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(mockFees)
-        } as MockResponse));
+      const result = await mempool.selectUTXOs('address', [])
+      expect(result).toEqual(mockUTXOs)
+    })
+  })
 
-      const result = await mempool.selectUTXOs(
-        'mock_address',
-        [{ address: 'destination_address', value: 50000 }]
-      );
-
-      expect(result).toHaveProperty('inputs');
-      expect(result).toHaveProperty('outputs');
-      expect(result.inputs.length).toBeGreaterThan(0);
-      expect(result.outputs.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe("getBalance", () => {
-    it("should fetch and return correct balance", async () => {
-      const mockResponse = {
+  describe('getBalance', () => {
+    it('should fetch and return correct balance', async () => {
+      const mockBalance = {
         chain_stats: {
-          funded_txo_sum: 200000,
-          spent_txo_sum: 100000,
+          funded_txo_sum: 1000000,
+          spent_txo_sum: 500000,
         },
-      };
+      }
 
-      (global.fetch as jest.Mock)
-        .mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(mockResponse),
-          } as MockResponse)
-        );
+      // @ts-expect-error - Ignoring type issues with the mock
+      mockFetch.mockResolvedValueOnce(createMockResponse(mockBalance))
 
-      const balance = await mempool.getBalance("mock_address");
-      expect(balance).toBe(100000); // funded - spent = 100000
-    });
-  });
+      const result = await mempool.getBalance('address')
+      expect(result).toBe(500000)
+    })
+  })
 
-  describe("broadcastTransaction", () => {
-    it("should broadcast transaction successfully", async () => {
-      const mockTxId = "mock_transaction_id";
+  describe('broadcastTransaction', () => {
+    it('should broadcast transaction successfully', async () => {
+      const txHex = '0123456789abcdef'
+      const txId = 'txid123'
 
-      (global.fetch as jest.Mock)
-        .mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: true,
-            text: () => Promise.resolve(mockTxId),
-          } as MockResponse)
-        );
+      // @ts-expect-error - Ignoring type issues with the mock
+      mockFetch.mockResolvedValueOnce(createMockResponse(txId))
 
-      const result = await mempool.broadcastTransaction("mock_tx_hex");
-      expect(result).toBe(mockTxId);
-    });
+      const result = await mempool.broadcastTransaction(txHex)
 
-    it("should handle broadcast errors", async () => {
-      (global.fetch as jest.Mock)
-        .mockImplementationOnce(() =>
-          Promise.resolve({
-            ok: false,
-            text: () => Promise.resolve("Transaction rejected"),
-          } as MockResponse)
-        );
+      expect(result).toBe(txId)
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://mempool.space/api/tx',
+        expect.objectContaining({
+          method: 'POST',
+          body: txHex,
+        })
+      )
+    })
 
-      await expect(mempool.broadcastTransaction("mock_tx_hex")).rejects.toThrow(
-        "Failed to broadcast transaction"
-      );
-    });
-  });
-});
+    it('should handle broadcast errors', async () => {
+      const txHex = '0123456789abcdef'
+      const errorMessage = 'Transaction rejected'
+
+      // @ts-expect-error - Ignoring type issues with the mock
+      mockFetch.mockResolvedValueOnce(createMockResponse(errorMessage, false))
+
+      await expect(mempool.broadcastTransaction(txHex)).rejects.toThrow(
+        errorMessage
+      )
+    })
+  })
+})

@@ -281,7 +281,8 @@ export class Bitcoin extends ChainAdapter<
     return psbt.extractTransaction().toHex()
   }
 
-  async broadcastTx(txSerialized: string): Promise<string> {
-    return await this.btcRpcAdapter.broadcastTransaction(txSerialized)
+  async broadcastTx(txSerialized: string): Promise<{ hash: string }> {
+    const txId = await this.btcRpcAdapter.broadcastTransaction(txSerialized)
+    return { hash: txId }
   }
 }

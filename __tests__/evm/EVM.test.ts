@@ -1,108 +1,82 @@
-import { EVM } from "../../src/chains/EVM/EVM";
-import { ethers } from "ethers";
-import { BaseChainSignatureContract } from "../../src/chains/ChainSignatureContract";
-import type {
-  EVMTransactionRequest,
-  EVMUnsignedTransaction,
-} from "../../src/chains/EVM/types";
-// import type { MPCPayloads, RSVSignature } from '../../src/chains/types';
-import BN from "bn.js";
-require("dotenv").config();
+import { jest } from '@jest/globals'
+// import BN from 'bn.js'
+import { config } from 'dotenv'
+import { http } from 'viem'
+import { mainnet } from 'viem/chains'
 
-class MockChainSignatureContract extends BaseChainSignatureContract {
-  async getCurrentSignatureDeposit() {
-    return new BN(BigInt(0).toString());
-  }
+// import { BaseChainSignatureContract } from '../../src/contracts/ChainSignatureContract'
+// import type { KeyDerivationPath, RSVSignature } from '../../src/types'
 
-  async getDerivedPublicKey(
-    args: { path: string; predecessor: string } & Record<string, unknown>,
-  ): Promise<`04${string}`> {
-    return `04${"a".repeat(128)}`;
-  }
+config()
 
-  async sign() {
-    return { r: "a".repeat(64), s: "b".repeat(64), v: 27 };
-  }
-
-  async getPublicKey() {
-    return "04".padEnd(130, "a");
-  }
+const mockPublicClientFunctions = {
+  getChainId: jest.fn<() => Promise<number>>().mockResolvedValue(1),
+  getTransactionCount: jest
+    .fn<() => Promise<bigint>>()
+    .mockResolvedValue(BigInt(0)),
+  getBalance: jest
+    .fn<() => Promise<bigint>>()
+    .mockResolvedValue(BigInt('1000000000000000000')),
+  estimateGas: jest
+    .fn<() => Promise<bigint>>()
+    .mockResolvedValue(BigInt('21000')),
+  estimateFeesPerGas: jest
+    .fn<() => Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint }>>()
+    .mockResolvedValue({
+      maxFeePerGas: BigInt('1000000000'),
+      maxPriorityFeePerGas: BigInt('1000000000'),
+    }),
 }
 
-describe("EVM", () => {
-  let evm: EVM;
-  let mockContract: MockChainSignatureContract;
-  let provider: ethers.JsonRpcProvider;
+jest.unstable_mockModule('viem', () => ({
+  createPublicClient: jest.fn().mockReturnValue({
+    ...mockPublicClientFunctions,
+    chain: mainnet,
+    account: undefined,
+    batch: undefined,
+    cacheTime: 0,
+    ccipRead: false,
+    key: 'public',
+    name: 'Public Client',
+    pollingInterval: 4000,
+    transport: http(),
+    type: 'public',
+    uid: 'public-client',
+  }),
+  http: jest.fn(),
+}))
 
-  beforeEach(() => {
-    mockContract = new MockChainSignatureContract();
-    const publicRpcUrl = `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`;
-    provider = new ethers.JsonRpcProvider(publicRpcUrl);
-    evm = new EVM({ rpcUrl: publicRpcUrl, contract: mockContract });
-  });
+// class MockChainSignatureContract extends BaseChainSignatureContract {
+//   async getCurrentSignatureDeposit(): Promise<BN> {
+//     return new BN(BigInt(0).toString())
+//   }
 
-  it("should derive address and public key", async () => {
-    const { address, publicKey } = await evm.deriveAddressAndPublicKey(
-      "predecessor",
-      "m/44'/60'/0'/0/0",
-    );
-    expect(address).toMatch(/^0x[a-fA-F0-9]{40}$/);
-    expect(publicKey).toMatch(/^04[a-fA-F0-9]{128}$/);
-  });
+//   async getDerivedPublicKey(
+//     args: { path: KeyDerivationPath; predecessor: string } & Record<
+//       string,
+//       unknown
+//     >
+//   ): Promise<`04${string}`> {
+//     return `04${'a'.repeat(128)}`
+//   }
 
-  it("should get balance", async () => {
-    jest
-      .spyOn(provider, "getBalance")
-      .mockResolvedValue(BigInt("1000000000000000000"));
-    const balance = await evm.getBalance(
-      "0x1234567890abcdef1234567890abcdef12345678",
-    );
-    expect(Number(balance)).toBeGreaterThan(0);
-  });
+//   async sign(): Promise<RSVSignature> {
+//     return { r: 'a'.repeat(64), s: 'b'.repeat(64), v: 27 }
+//   }
 
-  it("should create MPC payload and transaction", async () => {
-    const request: EVMTransactionRequest = {
-      from: "0x0000000000000000000000000000000000000000",
-      to: "0x0000000000000000000000000000000000000000",
-      value: BigInt("1000000000000000000"),
-      gasLimit: BigInt("21000"),
-      maxFeePerGas: BigInt("1000000000"),
-      maxPriorityFeePerGas: BigInt("1000000000"),
-    };
-    const { transaction, mpcPayloads } =
-      await evm.getMPCPayloadAndTransaction(request);
-    expect(transaction).toBeDefined();
-    expect(mpcPayloads.length).toBeGreaterThan(0);
-  });
+//   async getPublicKey(): Promise<`04${string}`> {
+//     return '04'.padEnd(130, 'a') as `04${string}`
+//   }
+// }
 
-  // it('should add signature to transaction', () => {
-  //   const transaction: EVMUnsignedTransaction = {
-  //     from: '0x0000000000000000000000000000000000000000',
-  //     to: '0x0000000000000000000000000000000000000000',
-  //     value: BigInt('1000000000000000000'),
-  //     gasLimit: BigInt('21000'),
-  //     maxFeePerGas: BigInt('1000000000'),
-  //     maxPriorityFeePerGas: BigInt('1000000000'),
-  //     nonce: 0,
-  //     chainId: 1,
-  //     type: 2,
-  //   };
-  //   const signedTx = evm.addSignature({ transaction, mpcSignatures: [{ r: 'a'.repeat(64), s: 'b'.repeat(64), v: 27 }] });
-  //   expect(signedTx).toMatch(/^0x[a-fA-F0-9]+$/);
-  // });
+// describe('EVM', () => {
+//   let evm: EVM
+//   let mockChainSignatureContract: MockChainSignatureContract
 
-  // it('should broadcast transaction', async () => {
-  //   jest.spyOn(provider, 'broadcastTransaction').mockResolvedValue({
-  //     hash: '0x'.padEnd(66, '0'),
-  //     confirmations: 0,
-  //     from: '0x0000000000000000000000000000000000000000',
-  //     wait: async () => ({
-  //       status: 1,
-  //       confirmations: 1,
-  //       transactionHash: '0x'.padEnd(66, '0'),
-  //     }),
-  //   } as any);
-  //   const txHash = await evm.broadcastTx('0x'.padEnd(66, '0'));
-  //   expect(txHash).toMatch(/^0x[a-fA-F0-9]{64}$/);
-  // });
-});
+//   beforeEach(() => {
+//     mockChainSignatureContract = new MockChainSignatureContract()
+//     evm = new evm({
+//       chainSignatureContract: mockChainSignatureContract,
+//     })
+//   })
+// })

@@ -13,14 +13,18 @@ import {
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { hardhat } from 'viem/chains'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from '@jest/globals'
+import { jest } from '@jest/globals'
 
 import type { ChainSignatureContract } from '../../contracts/ChainSignatureContract'
 import type { UncompressedPubKeySEC1 } from '../../types'
 
 import { EVM } from './EVM'
+import { BaseChainSignatureContract } from '../../contracts/ChainSignatureContract'
+import { EVMTransactionRequest } from './types'
+import type { PublicClient } from 'viem'
 
-describe('EVM', async () => {
+describe('EVM', () => {
   const privateKey =
     '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
   const testAccount = privateKeyToAccount(privateKey)
@@ -237,4 +241,54 @@ describe('EVM', async () => {
   })
 
   // TODO: Include test for v7 user operations.
+})
+
+describe('EVM Chain Adapter', () => {
+  let evm: EVM
+  let mockContract: jest.Mocked<BaseChainSignatureContract>
+  let mockPublicClient: PublicClient
+
+  beforeEach(() => {
+    mockContract = {
+      getDerivedPublicKey: jest.fn(),
+    } as unknown as jest.Mocked<BaseChainSignatureContract>
+
+    mockPublicClient = {
+      getChainId: () => Promise.resolve(1),
+      getTransactionCount: () => Promise.resolve(BigInt(0)),
+      request: () => Promise.resolve(undefined),
+    } as unknown as PublicClient
+
+    evm = new EVM({
+      contract: mockContract,
+      publicClient: mockPublicClient,
+    })
+  })
+
+  describe('prepareTransactionForSigning', () => {
+    it('should prepare transfer transaction', async () => {
+      const request: EVMTransactionRequest = {
+        from: '0x1234567890123456789012345678901234567890',
+        to: '0x0987654321098765432109876543210987654321',
+        value: BigInt('1000000000000000000'), // 1 ETH
+        gas: BigInt('21000'),
+        maxFeePerGas: BigInt('100000000000'),
+        maxPriorityFeePerGas: BigInt('1000000000'),
+      }
+
+      const result = await evm.prepareTransactionForSigning(request)
+
+      expect(result).toEqual({
+        transaction: expect.objectContaining({
+          from: request.from,
+          to: request.to,
+          value: request.value,
+          gas: request.gas,
+          maxFeePerGas: request.maxFeePerGas,
+          maxPriorityFeePerGas: request.maxPriorityFeePerGas,
+        }),
+        hashesToSign: expect.any(Array),
+      })
+    })
+  })
 })

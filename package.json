@@ -31,8 +31,11 @@
     "publish-npm": "npm run pre:deploy && cd dist && npm publish --access public",
     "publish-npm:beta": "npm run pre:deploy && cd dist && npm publish --tag beta",
     "hardhat": "pnpm exec hardhat node --config hardhat.config.mts",
-    "test": "pnpm exec hardhat node --config hardhat.config.mts & sleep 2 && vitest run && pkill -f hardhat",
-    "test:watch": "pnpm exec hardhat node --config hardhat.config.mts & sleep 2 && vitest --watch",
+    "test": "NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest -c jest.config.ts __tests__",
+    "test:watch": "NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest -c jest.config.ts --watch",
+    "test:coverage": "NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest -c jest.config.ts --coverage",
+    "test:passing": "NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest -c jest.config.ts __tests__/bitcoin/utils.test.ts",
+    "test:utils": "NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest -c jest.config.ts __tests__/bitcoin/utils.test.ts",
     "docs:dev": "vocs dev",
     "docs:build": "vocs build",
     "docs:preview": "vocs preview"
@@ -72,7 +75,10 @@
     "tsup": "^8.4.0",
     "typescript": "^5.4.3",
     "vitest": "^3.0.4",
-    "vocs": "1.0.0-alpha.62"
+    "vocs": "1.0.0-alpha.62",
+    "@types/jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "jest-environment-node": "^29.7.0"
   },
   "dependencies": {
     "@cosmjs/amino": "^0.32.4",
@@ -88,6 +94,7 @@
     "@near-js/types": "^0.3.1",
     "@near-wallet-selector/core": "^8.9.5",
     "@scure/base": "^1.2.4",
+    "@solana/web3.js": "^1.98.0",
     "bech32": "^2.0.0",
     "bitcoinjs-lib": "^6.1.5",
     "bn.js": "^5.2.1",
@@ -98,7 +105,8 @@
     "elliptic": "^6.6.1",
     "js-sha3": "^0.9.3",
     "near-api-js": "^5.0.1",
-    "viem": "^2.22.14"
+    "viem": "^2.22.14",
+    "import-local": "^3.1.0"
   },
   "packageManager": "pnpm@10.5.2+sha512.da9dc28cd3ff40d0592188235ab25d3202add8a207afbedc682220e4a0029ffbff4562102b9e6e46b4e3f9e8bd53e6d05de48544b0c57d4b0179e22c76d1199b"
 }

@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowJs": true,
+    "types": ["jest", "node"],
+    "paths": {
+      "@/*": ["./src/*"],
+      "@chain-adapters/*": ["./src/chain-adapters/*"],
+      "@contracts/*": ["./src/contracts/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@types": ["./src/types"],
+      "@constants": ["./src/constants"],
+      "@chains/*": ["./src/chains/*"],
+      "@chains": ["./src/chains"]
+    }
+  },
+  "include": ["src/**/*.ts", "__tests__/**/*.ts", "jest.setup.ts"],
+  "exclude": ["node_modules"]
+}
