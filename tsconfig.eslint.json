@@ -9,6 +9,7 @@
     "src/**/*.ts",
     "tsup.config.ts",
     "__tests__/**/*.ts",
-    "jest.setup.ts"
+    "jest.setup.ts",
+    "jest.config.ts"
   ]
 }

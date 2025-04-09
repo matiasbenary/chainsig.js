@@ -72,14 +72,32 @@ class MockBTCRpcAdapter extends BTCRpcAdapter {
 //   }
 // }
 
-// Mock localStorage
-const mockLocalStorage = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
+interface MockLocalStorage {
+  store: Record<string, string>
+  getItem: jest.Mock<(key: string) => string | null>
+  setItem: jest.Mock<(key: string, value: string) => void>
+  removeItem: jest.Mock<(key: string) => void>
+  clear: jest.Mock<() => void>
+  length: number
+  key: jest.Mock<(index: number) => string | null>
+}
+
+const mockLocalStorage: MockLocalStorage = {
+  store: {},
+  getItem: jest.fn((key: string) => mockLocalStorage.store[key] || null),
+  setItem: jest.fn((key: string, value: string) => {
+    mockLocalStorage.store[key] = value
+  }),
+  removeItem: jest.fn((key: string) => {
+    mockLocalStorage.store[key] = ''
+  }),
+  clear: jest.fn(() => {
+    mockLocalStorage.store = {}
+  }),
   length: 0,
-  key: jest.fn(),
+  key: jest.fn(
+    (index: number) => Object.keys(mockLocalStorage.store)[index] || null
+  ),
 }
 
 // Assign to global
@@ -127,20 +145,19 @@ class TestBitcoin extends ChainAdapter<
     transaction: BTCUnsignedTransaction,
     storageKey: string
   ): void {
-    mockLocalStorage.setItem(
-      storageKey,
-      JSON.stringify({
-        psbt: transaction.psbt.toBase64(),
-        publicKey: transaction.publicKey,
-      })
-    )
+    const dataToStore = JSON.stringify({
+      psbt: transaction.psbt.toBase64(),
+      publicKey: transaction.publicKey,
+    })
+
+    mockLocalStorage.setItem(storageKey, dataToStore)
   }
 
   getTransaction(storageKey: string): BTCUnsignedTransaction | undefined {
     const stored = mockLocalStorage.getItem(storageKey)
     if (!stored) return undefined
 
-    const parsed = JSON.parse(stored as string)
+    const parsed = JSON.parse(stored)
     if (
       typeof parsed !== 'object' ||
       !parsed ||

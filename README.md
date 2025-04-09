@@ -25,6 +25,9 @@ yarn add chainsig.js
 pnpm add chainsig.js
 ```
 
+## Example Repo
+https://github.com/NearDeFi/chainsig-example
+
 ## Quick Example
 
 ```ts twoslash

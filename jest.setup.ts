@@ -153,7 +153,7 @@ jest.mock('bn.js', () => BN)
 // Mock @solana/web3.js
 jest.mock('@solana/web3.js', () => {
   class MockPublicKey {
-    private _value: string
+    private readonly _value: string
 
     constructor(value: string) {
       this._value = value

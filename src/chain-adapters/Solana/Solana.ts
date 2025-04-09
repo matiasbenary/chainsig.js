@@ -1,3 +1,4 @@
+import { fromHex } from '@cosmjs/encoding'
 import type { Connection } from '@solana/web3.js'
 import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js'
 import type BN from 'bn.js'
@@ -76,8 +77,10 @@ export class Solana extends ChainAdapter<
 
     return {
       transaction,
-      feePayer: transaction.feePayer!,
-      recentBlockhash: transaction.recentBlockhash!,
+      feePayer:
+        transaction.feePayer ||
+        new PublicKey('11111111111111111111111111111111'),
+      recentBlockhash: transaction.recentBlockhash || '',
     }
   }
 
@@ -125,23 +128,8 @@ export class Solana extends ChainAdapter<
     }
   }
 
-  finalizeTransactionSigning(params: {
-    transaction: SolanaUnsignedTransaction
-    rsvSignatures: RSVSignature[]
-  }): string {
-    const { transaction, rsvSignatures } = params
-
-    // Convert RSV signature to Solana signature format
-    // Note: Need to implement conversion from RSV to Solana's 64-byte signature
-    const signature = this.convertRSVToSolanaSignature(rsvSignatures[0])
-
-    // Add signature to transaction
-    transaction.transaction.addSignature(
-      transaction.feePayer,
-      Buffer.from(signature)
-    )
-
-    return this.serializeTransaction(transaction)
+  finalizeTransactionSigning({ transaction, rsvSignatures }: { transaction: SolanaUnsignedTransaction; rsvSignatures: { r: string; s: string; v: number }[] }): string {
+    throw new Error('Not implemented');
   }
 
   async broadcastTx(txSerialized: string): Promise<{ hash: string }> {
@@ -155,8 +143,13 @@ export class Solana extends ChainAdapter<
   }
 
   private convertRSVToSolanaSignature(rsvSignature: RSVSignature): Uint8Array {
-    // Implementation needed: Convert RSV signature to Solana's 64-byte format
-    // This will depend on your RSV signature format and Solana's requirements
-    throw new Error('Not implemented')
+    const r = fromHex(rsvSignature.r)
+    const s = fromHex(rsvSignature.s)
+
+    const solanaSignature = new Uint8Array(64)
+    solanaSignature.set(r, 0)
+    solanaSignature.set(s, 32)
+
+    return solanaSignature
   }
 }

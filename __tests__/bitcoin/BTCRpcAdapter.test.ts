@@ -46,9 +46,16 @@ describe('Mempool BTCRpcAdapter', () => {
 
       // @ts-expect-error - Ignoring type issues with the mock
       mockFetch.mockResolvedValueOnce(createMockResponse(mockUTXOs))
+      // Mock the fee rate response
+      // @ts-expect-error - Ignoring type issues with the mock
+      mockFetch.mockResolvedValueOnce(createMockResponse({ hourFee: 10 }))
 
-      const result = await mempool.selectUTXOs('address', [])
-      expect(result).toEqual(mockUTXOs)
+      const result = await mempool.selectUTXOs('address', [{ value: 50000 }])
+      expect(result.inputs).toHaveLength(1)
+      // coinselect adds a change output when there's excess funds
+      expect(result.outputs).toHaveLength(2)
+      // First output should be our target
+      expect(result.outputs[0].value).toBe(50000)
     })
   })
 

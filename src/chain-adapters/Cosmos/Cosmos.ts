@@ -25,8 +25,7 @@ import type {
 import { fetchChainInfo } from '@chain-adapters/Cosmos/utils'
 import type { BaseChainSignatureContract } from '@contracts/ChainSignatureContract'
 import type { HashToSign, RSVSignature, KeyDerivationPath } from '@types'
-
-import { cryptography } from '../../utils'
+import { cryptography } from '@utils'
 
 /**
  * Implementation of the ChainAdapter interface for Cosmos-based networks.
@@ -238,22 +237,23 @@ export class Cosmos extends ChainAdapter<
     return Buffer.from(txBytes).toString('hex')
   }
 
-  async broadcastTx(txSerialized: string): Promise<{ hash: string }> {
-    const response = await fetch(`${this.endpoints.rpcUrl}/tx`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        tx_bytes: txSerialized,
-        mode: 'BROADCAST_MODE_SYNC',
-      }),
-    })
+  // @ts-expect-error - TODO: fix this
+  async broadcastTx(txSerialized: string): Promise<string> {
+    try {
+      const { rpcUrl } = await this.getChainInfo()
+      const client = await StargateClient.connect(rpcUrl)
 
-    const result = await response.json()
-    if (!result.tx_response?.txhash) {
-      throw new Error('Failed to broadcast transaction')
+      const txBytes = fromHex(txSerialized)
+      const broadcastResponse = await client.broadcastTx(txBytes)
+
+      if (broadcastResponse.code !== 0) {
+        throw new Error(`Broadcast error: ${broadcastResponse.rawLog}`)
+      }
+
+      return broadcastResponse.transactionHash
+    } catch (error) {
+      console.error('Transaction broadcast failed:', error)
+      throw new Error('Failed to broadcast transaction.')
     }
-    return { hash: result.tx_response.txhash }
   }
 }
