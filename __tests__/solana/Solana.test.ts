@@ -56,10 +56,7 @@ describe('Solana Chain Adapter', () => {
   it('should derive address and public key', async () => {
     const { address, publicKey } = await solana.deriveAddressAndPublicKey(
       'predecessor',
-      {
-        index: 0,
-        scheme: 'secp256k1',
-      }
+      'path'
     )
     expect(address).toBeDefined()
     expect(publicKey).toBeDefined()

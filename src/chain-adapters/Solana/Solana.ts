@@ -47,7 +47,7 @@ export class Solana extends ChainAdapter<
 
   async deriveAddressAndPublicKey(
     predecessor: string,
-    path: KeyDerivationPath
+    path: string
   ): Promise<{ address: string; publicKey: string }> {
     const pubKey = await this.contract.getDerivedPublicKey({
       path,

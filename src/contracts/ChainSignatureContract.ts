@@ -39,7 +39,7 @@ export abstract class BaseChainSignatureContract {
    */
   abstract getDerivedPublicKey(
     args: {
-      path: KeyDerivationPath
+      path: string
       predecessor: string
     } & Record<string, unknown>
   ): Promise<UncompressedPubKeySEC1>

@@ -116,7 +116,7 @@ export class Cosmos extends ChainAdapter<
 
   async deriveAddressAndPublicKey(
     predecessor: string,
-    path: KeyDerivationPath
+    path: string
   ): Promise<{
     address: string
     publicKey: string
