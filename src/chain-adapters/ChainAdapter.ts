@@ -1,4 +1,6 @@
-import type { KeyDerivationPath, HashToSign, RSVSignature } from '@types'
+import { type Transaction } from '@solana/web3.js'
+
+import type { HashToSign, RSVSignature, SolanaSignature } from '@types'
 
 export abstract class ChainAdapter<TransactionRequest, UnsignedTransaction> {
   /**
@@ -78,8 +80,8 @@ export abstract class ChainAdapter<TransactionRequest, UnsignedTransaction> {
    * @returns The serialized signed transaction ready for broadcast
    */
   abstract finalizeTransactionSigning(params: {
-    transaction: UnsignedTransaction
-    rsvSignatures: RSVSignature[]
+    transaction: UnsignedTransaction | Transaction
+    rsvSignatures: RSVSignature[] | SolanaSignature
   }): string
 
   /**

@@ -24,7 +24,7 @@ import type {
 } from '@chain-adapters/Cosmos/types'
 import { fetchChainInfo } from '@chain-adapters/Cosmos/utils'
 import type { BaseChainSignatureContract } from '@contracts/ChainSignatureContract'
-import type { HashToSign, RSVSignature, KeyDerivationPath } from '@types'
+import type { HashToSign, RSVSignature, UncompressedPubKeySEC1 } from '@types'
 import { cryptography } from '@utils'
 
 /**
@@ -131,7 +131,9 @@ export class Cosmos extends ChainAdapter<
       throw new Error('Failed to get derived public key')
     }
 
-    const derivedKey = cryptography.compressPubKey(uncompressedPubKey)
+    const derivedKey = cryptography.compressPubKey(
+      uncompressedPubKey as UncompressedPubKeySEC1
+    )
     const pubKeySha256 = sha256(fromHex(derivedKey))
     const ripemd160Hash = ripemd160(pubKeySha256)
     const address = bech32.encode(prefix, bech32.toWords(ripemd160Hash))

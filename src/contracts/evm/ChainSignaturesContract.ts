@@ -89,6 +89,9 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     path: string
     predecessor: string
   }): Promise<UncompressedPubKeySEC1> {
+    if ('IsEd25519' in args && args.IsEd25519) {
+      throw new Error('Ed25519 not supported on EVM chains')
+    }
     const pubKey = cryptography.deriveChildPublicKey(
       await this.getPublicKey(),
       args.predecessor.toLowerCase(),

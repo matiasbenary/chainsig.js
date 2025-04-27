@@ -11,7 +11,6 @@ import {
   numberToHex,
   getAddress,
   type Address,
-  type Hash,
   concatHex,
   encodeAbiParameters,
   hexToBigInt,

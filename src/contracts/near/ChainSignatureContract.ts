@@ -28,7 +28,8 @@ type NearContract = Contract & {
   derived_public_key: (args: {
     path: string
     predecessor: string
-  }) => Promise<NajPublicKey>
+    domain_id?: number
+  }) => Promise<NajPublicKey | `Ed25519:${string}`>
 }
 
 interface ChainSignatureContractArgs {
@@ -122,7 +123,17 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   async getDerivedPublicKey(args: {
     path: string
     predecessor: string
-  }): Promise<UncompressedPubKeySEC1> {
+    IsEd25519?: boolean
+  }): Promise<UncompressedPubKeySEC1 | `Ed25519:${string}`> {
+    if (args.IsEd25519) {
+      const contract = await this.getContract()
+      return (await contract.derived_public_key({
+        path: args.path,
+        predecessor: args.predecessor,
+        domain_id: 1,
+      })) as `Ed25519:${string}`
+    }
+
     if (this.rootPublicKey) {
       const pubKey = cryptography.deriveChildPublicKey(
         await this.getPublicKey(),
@@ -135,7 +146,7 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
       // Support for legacy contract
       const contract = await this.getContract()
       const najPubKey = await contract.derived_public_key(args)
-      return najToUncompressedPubKeySEC1(najPubKey)
+      return najToUncompressedPubKeySEC1(najPubKey as NajPublicKey)
     }
   }
 

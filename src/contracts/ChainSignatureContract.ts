@@ -3,8 +3,13 @@ import type BN from 'bn.js'
 import type {
   RSVSignature,
   UncompressedPubKeySEC1,
-  KeyDerivationPath,
+  Ed25519PubKey,
+  DerivedPublicKeyArgs,
 } from '../types'
+
+export interface ArgsEd25519 extends DerivedPublicKeyArgs {
+  IsEd25519: boolean
+}
 
 export interface SignArgs {
   /** The payload to sign as an array of 32 bytes */
@@ -35,14 +40,13 @@ export abstract class BaseChainSignatureContract {
    * @param args - Arguments for key derivation
    * @param args.path - The path to use derive the key
    * @param args.predecessor - The id/address of the account requesting signature
+   * @param args.IsEd25519 - Flag indicating if the key is Ed25519
    * @returns Promise resolving to the derived SEC1 uncompressed public key
    */
+  // abstract getDerivedPublicKey(args: ArgsEd25519): Promise<Ed25519PubKey>
   abstract getDerivedPublicKey(
-    args: {
-      path: string
-      predecessor: string
-    } & Record<string, unknown>
-  ): Promise<UncompressedPubKeySEC1>
+    args: DerivedPublicKeyArgs | ArgsEd25519
+  ): Promise<UncompressedPubKeySEC1 | Ed25519PubKey>
 }
 
 /**

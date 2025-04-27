@@ -11,7 +11,7 @@ import type {
 import { parseBTCNetwork } from '@chain-adapters/Bitcoin/utils'
 import { ChainAdapter } from '@chain-adapters/ChainAdapter'
 import type { BaseChainSignatureContract } from '@contracts/ChainSignatureContract'
-import type { HashToSign, RSVSignature, KeyDerivationPath } from '@types'
+import type { HashToSign, RSVSignature, UncompressedPubKeySEC1 } from '@types'
 import { cryptography } from '@utils'
 
 /**
@@ -185,7 +185,9 @@ export class Bitcoin extends ChainAdapter<
       throw new Error('Failed to get derived public key')
     }
 
-    const derivedKey = cryptography.compressPubKey(uncompressedPubKey)
+    const derivedKey = cryptography.compressPubKey(
+      uncompressedPubKey as UncompressedPubKeySEC1
+    )
     const publicKeyBuffer = Buffer.from(derivedKey, 'hex')
     const network = parseBTCNetwork(this.network)
 
