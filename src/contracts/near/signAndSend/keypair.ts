@@ -54,7 +54,7 @@ export const EVMTransaction = async (
     const txHash = await evm.broadcastTx(txSerialized)
 
     return {
-      transactionHash: txHash,
+      transactionHash: txHash.hash,
       success: true,
     }
   } catch (e: unknown) {

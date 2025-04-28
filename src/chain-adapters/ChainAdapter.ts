@@ -91,5 +91,5 @@ export abstract class ChainAdapter<TransactionRequest, UnsignedTransaction> {
    * @param txSerialized - The serialized signed transaction
    * @returns Promise resolving to an object containing the transaction hash/ID
    */
-  abstract broadcastTx(txSerialized: string): Promise<Hash | { hash: string }>
+  abstract broadcastTx(txSerialized: string): Promise<{ hash: string }>
 }
