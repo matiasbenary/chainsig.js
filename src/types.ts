@@ -17,7 +17,7 @@ export interface DerivedPublicKeyArgs {
   predecessor: string
 }
 
-export interface SolanaSignature {
+export interface Signature {
   scheme: string
   signature: number[]
 }

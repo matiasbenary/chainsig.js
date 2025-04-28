@@ -3,7 +3,7 @@ import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js'
 import type BN from 'bn.js'
 
 import type { BaseChainSignatureContract } from '@contracts/ChainSignatureContract'
-import type { HashToSign, SolanaSignature } from '@types'
+import type { HashToSign, Signature } from '@types'
 
 import { ChainAdapter } from '../ChainAdapter'
 
@@ -134,7 +134,7 @@ export class Solana extends ChainAdapter<
     senderAddress,
   }: {
     transaction: Transaction
-    rsvSignatures: SolanaSignature
+    rsvSignatures: Signature
     senderAddress: string
   }): string {
     const signatureBuffer = Buffer.from(rsvSignatures.signature)

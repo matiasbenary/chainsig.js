@@ -1,7 +1,7 @@
 import { type Transaction } from '@solana/web3.js'
 import { type Hash } from 'viem'
 
-import type { HashToSign, RSVSignature, SolanaSignature } from '@types'
+import type { HashToSign, RSVSignature, Signature } from '@types'
 
 export abstract class ChainAdapter<TransactionRequest, UnsignedTransaction> {
   /**
@@ -82,7 +82,7 @@ export abstract class ChainAdapter<TransactionRequest, UnsignedTransaction> {
    */
   abstract finalizeTransactionSigning(params: {
     transaction: UnsignedTransaction | Transaction
-    rsvSignatures: RSVSignature[] | SolanaSignature
+    rsvSignatures: RSVSignature[] | Signature
   }): string
 
   /**
