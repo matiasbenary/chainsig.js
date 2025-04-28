@@ -1,4 +1,4 @@
-import type { Connection } from '@solana/web3.js'
+import type { Connection as SolanaConnection } from '@solana/web3.js'
 import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js'
 import type BN from 'bn.js'
 
@@ -21,15 +21,15 @@ export class Solana extends ChainAdapter<
   SolanaTransactionRequest,
   SolanaUnsignedTransaction
 > {
-  private readonly connection: Connection
+  private readonly connection: SolanaConnection
   private readonly contract: BaseChainSignatureContract
 
   constructor(args: {
-    connection: Connection
+    solanaConnection: SolanaConnection
     contract: BaseChainSignatureContract
   }) {
     super()
-    this.connection = args.connection
+    this.connection = args.solanaConnection
     this.contract = args.contract
   }
 
