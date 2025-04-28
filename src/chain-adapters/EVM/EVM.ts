@@ -11,6 +11,7 @@ import {
   numberToHex,
   getAddress,
   type Address,
+  type Hash,
   concatHex,
   encodeAbiParameters,
   hexToBigInt,
@@ -319,12 +320,12 @@ export class EVM extends ChainAdapter<
     }
   }
 
-  async broadcastTx(txSerialized: string): Promise<{ hash: string }> {
+  async broadcastTx(txSerialized: string): Promise<Hash> {
     try {
       const hash = await this.client.sendRawTransaction({
         serializedTransaction: txSerialized as `0x${string}`,
       })
-      return { hash }
+      return hash
     } catch (error) {
       console.error('Transaction broadcast failed:', error)
       throw new Error('Failed to broadcast transaction.')

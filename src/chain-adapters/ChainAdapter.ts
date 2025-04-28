@@ -1,4 +1,5 @@
 import { type Transaction } from '@solana/web3.js'
+import { type Hash } from 'viem'
 
 import type { HashToSign, RSVSignature, SolanaSignature } from '@types'
 
@@ -90,5 +91,5 @@ export abstract class ChainAdapter<TransactionRequest, UnsignedTransaction> {
    * @param txSerialized - The serialized signed transaction
    * @returns Promise resolving to an object containing the transaction hash/ID
    */
-  abstract broadcastTx(txSerialized: string): Promise<{ hash: string }>
+  abstract broadcastTx(txSerialized: string): Promise<Hash | { hash: string }>
 }
