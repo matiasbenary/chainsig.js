@@ -42,7 +42,7 @@ export interface EVMRequest {
   chainConfig: EVMChainConfigWithProviders
   nearAuthentication: NearAuthentication
   fastAuthRelayerUrl?: string
-  derivationPath: KeyDerivationPath
+  derivationPath: string
 }
 
 export type BTCChainConfigWithProviders = ChainProvider & {
@@ -54,7 +54,7 @@ export interface BitcoinRequest {
   chainConfig: BTCChainConfigWithProviders
   nearAuthentication: NearAuthentication
   fastAuthRelayerUrl?: string
-  derivationPath: KeyDerivationPath
+  derivationPath: string
 }
 
 export interface CosmosChainConfig {
@@ -66,6 +66,6 @@ export interface CosmosRequest {
   chainConfig: CosmosChainConfig
   transaction: CosmosTransactionRequest
   nearAuthentication: NearAuthentication
-  derivationPath: KeyDerivationPath
+  derivationPath: string
   fastAuthRelayerUrl?: string
 }

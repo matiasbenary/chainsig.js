@@ -1,10 +1,9 @@
-import { fromHex } from '@cosmjs/encoding'
-import type { Connection } from '@solana/web3.js'
+import type { Connection as SolanaConnection } from '@solana/web3.js'
 import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js'
 import type BN from 'bn.js'
 
 import type { BaseChainSignatureContract } from '@contracts/ChainSignatureContract'
-import type { KeyDerivationPath, HashToSign, RSVSignature } from '@types'
+import type { HashToSign, Signature } from '@types'
 
 import { ChainAdapter } from '../ChainAdapter'
 
@@ -22,15 +21,15 @@ export class Solana extends ChainAdapter<
   SolanaTransactionRequest,
   SolanaUnsignedTransaction
 > {
-  private readonly connection: Connection
+  private readonly connection: SolanaConnection
   private readonly contract: BaseChainSignatureContract
 
   constructor(args: {
-    connection: Connection
+    solanaConnection: SolanaConnection
     contract: BaseChainSignatureContract
   }) {
     super()
-    this.connection = args.connection
+    this.connection = args.solanaConnection
     this.contract = args.contract
   }
 
@@ -47,19 +46,20 @@ export class Solana extends ChainAdapter<
 
   async deriveAddressAndPublicKey(
     predecessor: string,
-    path: KeyDerivationPath
+    path: string
   ): Promise<{ address: string; publicKey: string }> {
     const pubKey = await this.contract.getDerivedPublicKey({
       path,
       predecessor,
+      IsEd25519: true,
     })
-    // Convert the public key to Solana format (base58)
-    // Note: Need to implement conversion from contract's public key format to Solana's
-    const solanaPublicKey = new PublicKey(pubKey)
+
+    const base58Key = pubKey.replace('ed25519:', '')
+    const publicKey = new PublicKey(base58Key)
 
     return {
-      address: solanaPublicKey.toBase58(),
-      publicKey: pubKey,
+      address: publicKey.toBase58(),
+      publicKey: publicKey.toString(),
     }
   }
 
@@ -128,8 +128,18 @@ export class Solana extends ChainAdapter<
     }
   }
 
-  finalizeTransactionSigning({ transaction, rsvSignatures }: { transaction: SolanaUnsignedTransaction; rsvSignatures: { r: string; s: string; v: number }[] }): string {
-    throw new Error('Not implemented');
+  finalizeTransactionSigning({
+    transaction,
+    rsvSignatures,
+    senderAddress,
+  }: {
+    transaction: Transaction
+    rsvSignatures: Signature
+    senderAddress: string
+  }): string {
+    const signatureBuffer = Buffer.from(rsvSignatures.signature)
+    transaction.addSignature(new PublicKey(senderAddress), signatureBuffer)
+    return transaction.serialize().toString('base64')
   }
 
   async broadcastTx(txSerialized: string): Promise<{ hash: string }> {
@@ -140,16 +150,5 @@ export class Solana extends ChainAdapter<
     )
 
     return { hash: signature }
-  }
-
-  private convertRSVToSolanaSignature(rsvSignature: RSVSignature): Uint8Array {
-    const r = fromHex(rsvSignature.r)
-    const s = fromHex(rsvSignature.s)
-
-    const solanaSignature = new Uint8Array(64)
-    solanaSignature.set(r, 0)
-    solanaSignature.set(s, 32)
-
-    return solanaSignature
   }
 }

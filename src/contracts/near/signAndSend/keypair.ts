@@ -54,7 +54,7 @@ export const EVMTransaction = async (
     const txHash = await evm.broadcastTx(txSerialized)
 
     return {
-      transactionHash: txHash,
+      transactionHash: txHash.hash,
       success: true,
     }
   } catch (e: unknown) {
@@ -112,7 +112,7 @@ export const BTCTransaction = async (
     const txHash = await btc.broadcastTx(txSerialized)
 
     return {
-      transactionHash: txHash,
+      transactionHash: txHash.hash,
       success: true,
     }
   } catch (e: unknown) {
