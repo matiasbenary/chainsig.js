@@ -1,93 +1,167 @@
-import type BN from 'bn.js'
+import { type CodeResult } from '@near-js/types'
+import { type FinalExecutionOutcome } from '@near-wallet-selector/core'
+import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
+import BN from 'bn.js'
+import { providers } from 'near-api-js'
 
-import type {
-  RSVSignature,
-  UncompressedPubKeySEC1,
-  Ed25519PubKey,
-  DerivedPublicKeyArgs,
-} from '../types'
+import {
+  type RSVSignature,
+  type UncompressedPubKeySEC1,
+  type NajPublicKey,
+} from '@types'
 
-export interface ArgsEd25519 extends DerivedPublicKeyArgs {
-  IsEd25519: boolean
+import { NEAR_MAX_GAS } from './constants'
+import { responseToMpcSignature } from './transaction'
+import { type NearNetworkIds } from './types'
+
+interface ViewMethodParams {
+  method: string
+  args?: Record<string, unknown>
 }
 
-export type Payload = number[]
+export type HashToSign = number[]
 
 export interface SignArgs {
-  /** The payload to sign as an array of 32 bytes */
-  payload: number[]
-  /** The derivation path for key generation */
+  payloads: HashToSign[]
   path: string
-  /** Version of the key to use */
-  key_version: number
+  keyType: 'secp256k1' | 'ed25519'
+  signerAccount: {
+    signAndSendTransactions: (transactions: {
+      transactions: any[]
+    }) => Promise<any>
+  }
 }
 
-export interface SignArgsBitcoin {
-  /** The payload to sign as an array of 32 bytes */
-  payload: number[][]
-  /** The derivation path for key generation */
-  path: string
-  /** Version of the key to use */
-  key_version: number
-}
-export interface PayloadV2Args {
-  payload_v2: { Eddsa: string }
-  path: string
-  domain_id: number
-}
-/**
- * Base contract interface required for compatibility with ChainAdapter instances like EVM and Bitcoin.
- *
- * See {@link EVM} and {@link Bitcoin} for example implementations.
- */
-export abstract class BaseChainSignatureContract {
-  /**
-   * Gets the current signature deposit required by the contract.
-   * This deposit amount helps manage network congestion.
-   *
-   * @returns Promise resolving to the required deposit amount as a BigNumber
-   */
-  abstract getCurrentSignatureDeposit(): Promise<BN>
+export class ChainSignatureContract {
+  private readonly contractId: string
+  private readonly networkId: NearNetworkIds
+  private readonly provider: providers.FailoverRpcProvider
 
-  /**
-   * Gets the derived public key for a given path and predecessor.
-   *
-   * @param args - Arguments for key derivation
-   * @param args.path - The path to use derive the key
-   * @param args.predecessor - The id/address of the account requesting signature
-   * @param args.IsEd25519 - Flag indicating if the key is Ed25519
-   * @returns Promise resolving to the derived SEC1 uncompressed public key
-   */
-  // abstract getDerivedPublicKey(args: ArgsEd25519): Promise<Ed25519PubKey>
-  abstract getDerivedPublicKey(
-    args: DerivedPublicKeyArgs | ArgsEd25519
-  ): Promise<UncompressedPubKeySEC1 | Ed25519PubKey>
-}
+  constructor({
+    contractId,
+    networkId,
+    fallbackRpcUrls,
+  }: {
+    contractId: string
+    networkId: NearNetworkIds
+    fallbackRpcUrls?: string[]
+  }) {
+    this.contractId = contractId
+    this.networkId = networkId
 
-/**
- * Full contract interface that extends BaseChainSignatureContract to provide all Sig Network Smart Contract capabilities.
- */
-export abstract class ChainSignatureContract extends BaseChainSignatureContract {
-  /**
-   * Signs a payload using Sig Network MPC.
-   *
-   * @param payloads - The payload to sign as an array of 32 bytes
-   * @param keyType - The type of key to use for signing, either 'secp256k1' or 'ed25519'
-   * @returns Promise resolving to the signature
-   */
-  abstract sign(
-    payloads: Payload[],
-    path: string,
-    keyType: 'secp256k1' | 'ed25519',
-    signerAccount: {
-      signAndSendTransactions: (transactions: any) => Promise<any>
+    const rpcProviderUrls =
+      fallbackRpcUrls && fallbackRpcUrls.length > 0
+        ? fallbackRpcUrls
+        : [`https://rpc.${this.networkId}.near.org`]
+
+    this.provider = new providers.FailoverRpcProvider(
+      rpcProviderUrls.map((url) => new providers.JsonRpcProvider({ url }))
+    )
+  }
+
+  private async viewFunction(params: {
+    method: 'public_key'
+    args?: Record<string, unknown>
+  }): Promise<NajPublicKey>
+  private async viewFunction(params: {
+    method: 'experimental_signature_deposit'
+    args?: Record<string, unknown>
+  }): Promise<number>
+  private async viewFunction(params: {
+    method: 'derived_public_key'
+    args: { path: string; predecessor: string; domain_id?: number }
+  }): Promise<NajPublicKey | `Ed25519:${string}`>
+  private async viewFunction({
+    method,
+    args = {},
+  }: ViewMethodParams): Promise<unknown> {
+    const res = await this.provider.query<CodeResult>({
+      request_type: 'call_function',
+      account_id: this.contractId,
+      method_name: method,
+      args_base64: Buffer.from(JSON.stringify(args)).toString('base64'),
+      finality: 'optimistic',
+    })
+
+    return JSON.parse(Buffer.from(res.result).toString())
+  }
+
+  async getCurrentSignatureDeposit(): Promise<BN> {
+    return new BN(
+      (
+        await this.viewFunction({
+          method: 'experimental_signature_deposit',
+        })
+      ).toLocaleString('fullwide', {
+        useGrouping: false,
+      })
+    )
+  }
+
+  async sign({
+    payloads,
+    path,
+    keyType,
+    signerAccount,
+  }: SignArgs): Promise<RSVSignature[]> {
+    const transactions = payloads.map((payload) => ({
+      receiverId: this.contractId,
+      actions: [
+        {
+          type: 'FunctionCall' as const,
+          params: {
+            methodName: 'sign',
+            args: {
+              request: {
+                payload_v2: { [keyType]: payload },
+                path,
+                key_version: 0,
+              },
+            },
+            gas: NEAR_MAX_GAS,
+            deposit: '1',
+          },
+        },
+      ],
+    }))
+
+    const sentTxs = (await signerAccount.signAndSendTransactions({
+      transactions,
+    })) as FinalExecutionOutcome[]
+
+    const rsvSignatures = sentTxs.map((tx) =>
+      responseToMpcSignature({ response: tx })
+    )
+    return rsvSignatures as RSVSignature[]
+  }
+
+  async getPublicKey(): Promise<UncompressedPubKeySEC1> {
+    const najPubKey = await this.viewFunction({
+      method: 'public_key',
+    })
+    return najToUncompressedPubKeySEC1(najPubKey)
+  }
+
+  async getDerivedPublicKey(args: {
+    path: string
+    predecessor: string
+    IsEd25519?: boolean
+  }): Promise<UncompressedPubKeySEC1 | `Ed25519:${string}`> {
+    if (args.IsEd25519) {
+      return (await this.viewFunction({
+        method: 'derived_public_key',
+        args: {
+          path: args.path,
+          predecessor: args.predecessor,
+          domain_id: 1,
+        },
+      })) as `Ed25519:${string}`
     }
-  ): Promise<RSVSignature>
 
-  /**
-   * Gets the public key associated with this contract instance.
-   *
-   * @returns Promise resolving to the SEC1 uncompressed public key
-   */
-  abstract getPublicKey(): Promise<UncompressedPubKeySEC1>
+    const najPubKey = (await this.viewFunction({
+      method: 'derived_public_key',
+      args,
+    })) as NajPublicKey
+    return najToUncompressedPubKeySEC1(najPubKey)
+  }
 }

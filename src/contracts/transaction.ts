@@ -16,9 +16,9 @@ import {
 import { getTransactionLastResult } from 'near-api-js/lib/providers'
 import { withRetry } from 'viem'
 
-import { ChainSignatureContract } from '@contracts/near/ChainSignatureContract'
-import { NEAR_MAX_GAS } from '@contracts/near/constants'
-import { type ChainSignatureContractIds } from '@contracts/near/types'
+import { ChainSignatureContract } from '@contracts/ChainSignatureContract'
+import { NEAR_MAX_GAS } from '@contracts/constants'
+import { type ChainSignatureContractIds } from '@contracts/types'
 import {
   type RSVSignature,
   type KeyDerivationPath,
