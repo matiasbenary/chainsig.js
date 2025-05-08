@@ -48,19 +48,19 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
     )
   }
 
-  async viewFunction(params: {
+  private async viewFunction(params: {
     method: 'public_key'
     args?: Record<string, unknown>
   }): Promise<NajPublicKey>
-  async viewFunction(params: {
+  private async viewFunction(params: {
     method: 'experimental_signature_deposit'
     args?: Record<string, unknown>
   }): Promise<number>
-  async viewFunction(params: {
+  private async viewFunction(params: {
     method: 'derived_public_key'
     args: { path: string; predecessor: string; domain_id?: number }
   }): Promise<NajPublicKey | `Ed25519:${string}`>
-  async viewFunction({
+  private async viewFunction({
     method,
     args = {},
   }: ViewMethodParams): Promise<unknown> {
