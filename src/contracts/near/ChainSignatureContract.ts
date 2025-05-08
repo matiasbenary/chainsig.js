@@ -7,7 +7,11 @@ import BN from 'bn.js'
 
 import { CHAINS, KDF_CHAIN_IDS } from '@constants'
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@contracts/ChainSignatureContract'
-import type { SignArgs } from '@contracts/ChainSignatureContract'
+import type {
+  PayloadV2Args,
+  SignArgs,
+  SignArgsBitcoin,
+} from '@contracts/ChainSignatureContract'
 import { getNearAccount } from '@contracts/near/account'
 import { DONT_CARE_ACCOUNT_ID, NEAR_MAX_GAS } from '@contracts/near/constants'
 import {
@@ -19,7 +23,12 @@ import {
   type NearNetworkIds,
   type ChainSignatureContractIds,
 } from '@contracts/near/types'
-import type { RSVSignature, UncompressedPubKeySEC1, NajPublicKey } from '@types'
+import type {
+  RSVSignature,
+  UncompressedPubKeySEC1,
+  NajPublicKey,
+  Ed25519Signature,
+} from '@types'
 import { cryptography } from '@utils'
 
 type NearContract = Contract & {
@@ -162,11 +171,17 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
   }
 
   async sign(
-    args: SignArgs,
-    options?: {
-      nonce?: number
-    }
-  ): Promise<RSVSignature> {
+    args: SignArgsBitcoin & Record<string, unknown>
+  ): Promise<RSVSignature[]>
+  async sign(
+    args: PayloadV2Args & Record<string, unknown>
+  ): Promise<Ed25519Signature>
+  async sign(args: SignArgs & Record<string, unknown>): Promise<RSVSignature>
+  async sign(
+    args: (SignArgs | PayloadV2Args | SignArgsBitcoin) &
+      Record<string, unknown>,
+    options?: { nonce?: number }
+  ): Promise<RSVSignature | Ed25519Signature | RSVSignature[]> {
     this.requireAccount()
 
     const deposit = await this.getCurrentSignatureDeposit()

@@ -230,7 +230,7 @@ export class Bitcoin extends ChainAdapter<
     const psbt = await this.createPSBT({
       transactionRequest,
     })
-
+    console.log('PSBT:', psbt)
     // We can't double sign a PSBT, therefore we serialize the payload before to return it
     const psbtHex = psbt.toHex()
 

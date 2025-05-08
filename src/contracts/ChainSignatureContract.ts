@@ -5,6 +5,7 @@ import type {
   UncompressedPubKeySEC1,
   Ed25519PubKey,
   DerivedPublicKeyArgs,
+  Ed25519Signature,
 } from '../types'
 
 export interface ArgsEd25519 extends DerivedPublicKeyArgs {
@@ -20,6 +21,19 @@ export interface SignArgs {
   key_version: number
 }
 
+export interface SignArgsBitcoin {
+  /** The payload to sign as an array of 32 bytes */
+  payload: number[][]
+  /** The derivation path for key generation */
+  path: string
+  /** Version of the key to use */
+  key_version: number
+}
+export interface PayloadV2Args {
+  payload_v2: { Eddsa: string }
+  path: string
+  domain_id: number
+}
 /**
  * Base contract interface required for compatibility with ChainAdapter instances like EVM and Bitcoin.
  *
@@ -62,6 +76,12 @@ export abstract class ChainSignatureContract extends BaseChainSignatureContract 
    * @param args.key_version - Version of the key to use
    * @returns Promise resolving to the RSV signature
    */
+  abstract sign(
+    args: SignArgsBitcoin & Record<string, unknown>
+  ): Promise<RSVSignature[]>
+  abstract sign(
+    args: PayloadV2Args & Record<string, unknown>
+  ): Promise<Ed25519Signature>
   abstract sign(args: SignArgs & Record<string, unknown>): Promise<RSVSignature>
 
   /**

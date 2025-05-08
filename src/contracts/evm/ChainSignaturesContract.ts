@@ -5,12 +5,17 @@ import { withRetry, type PublicClient, type WalletClient, type Hex } from 'viem'
 
 import { CHAINS, KDF_CHAIN_IDS } from '@constants'
 import { ChainSignatureContract as AbstractChainSignatureContract } from '@contracts/ChainSignatureContract'
-import type { SignArgs } from '@contracts/ChainSignatureContract'
+import type {
+  PayloadV2Args,
+  SignArgs,
+  SignArgsBitcoin,
+} from '@contracts/ChainSignatureContract'
 import type {
   NajPublicKey,
   RSVSignature,
   ChainSigEvmMpcSignature,
   UncompressedPubKeySEC1,
+  Ed25519Signature,
 } from '@types'
 import { cryptography } from '@utils'
 
@@ -122,7 +127,12 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
    * parameters, it will throw an error.
    */
   async sign(
-    args: SignArgs,
+    args: SignArgsBitcoin & Record<string, unknown>
+  ): Promise<RSVSignature[]>
+  async sign(args: PayloadV2Args): Promise<Ed25519Signature>
+  async sign(args: SignArgs): Promise<RSVSignature>
+  async sign(
+    args: SignArgs | SignArgsBitcoin | PayloadV2Args,
     options: SignOptions = {
       sign: {
         algo: '',
@@ -134,13 +144,40 @@ export class ChainSignatureContract extends AbstractChainSignatureContract {
         retryCount: 12,
       },
     }
-  ): Promise<RSVSignature> {
+  ): Promise<RSVSignature | Ed25519Signature | RSVSignature[]> {
     if (!this.walletClient?.account) {
       throw new Error('Wallet client required for signing operations')
     }
 
+    if (
+      'payload' in args &&
+      Array.isArray(args.payload) &&
+      Array.isArray(args.payload[0])
+    ) {
+      throw new Error('Batch signing not supported for EVM chains')
+    }
+
+    if ('payload_v2' in args) {
+      throw new Error('Ed25519 signing not implemented for EVM contract')
+    }
+
+    let payloadBuffer: Buffer
+
+    if ('payload' in args) {
+      if (
+        typeof args.payload === 'string' ||
+        (Array.isArray(args.payload) && typeof args.payload[0] === 'number')
+      ) {
+        payloadBuffer = Buffer.from(args.payload as string | number[])
+      } else {
+        throw new Error('Invalid payload format for EVM signing')
+      }
+    } else {
+      throw new Error('Payload is required for EVM signing')
+    }
+
     const request: SignRequest = {
-      payload: `0x${Buffer.from(args.payload).toString('hex')}`,
+      payload: `0x${payloadBuffer.toString('hex')}`,
       path: args.path,
       keyVersion: args.key_version,
       algo: options.sign.algo ?? '',

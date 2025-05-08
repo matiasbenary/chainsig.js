@@ -24,6 +24,7 @@ import {
   type KeyDerivationPath,
   type MPCSignature,
   type HashToSign,
+  type Ed25519Signature,
 } from '@types'
 import { cryptography } from '@utils'
 
@@ -72,9 +73,16 @@ export const responseToMpcSignature = ({
   response,
 }: {
   response: FinalExecutionOutcome
-}): RSVSignature | undefined => {
+}): RSVSignature | Ed25519Signature | undefined => {
   const signature = getTransactionLastResult(response) as MPCSignature
-
+  console.log('signature', signature)
+  if (
+    'scheme' in signature &&
+    signature.scheme === 'Ed25519' &&
+    'signature' in signature
+  ) {
+    return signature as Ed25519Signature
+  }
   if (signature) {
     return cryptography.toRSV(signature)
   } else {
