@@ -5,12 +5,13 @@ import type {
   UncompressedPubKeySEC1,
   Ed25519PubKey,
   DerivedPublicKeyArgs,
-  Ed25519Signature,
 } from '../types'
 
 export interface ArgsEd25519 extends DerivedPublicKeyArgs {
   IsEd25519: boolean
 }
+
+export type Payload = number[]
 
 export interface SignArgs {
   /** The payload to sign as an array of 32 bytes */
@@ -70,19 +71,18 @@ export abstract class ChainSignatureContract extends BaseChainSignatureContract 
   /**
    * Signs a payload using Sig Network MPC.
    *
-   * @param args - Arguments for the signing operation
-   * @param args.payload - The data to sign as an array of 32 bytes
-   * @param args.path - The string path to use derive the key
-   * @param args.key_version - Version of the key to use
-   * @returns Promise resolving to the RSV signature
+   * @param payloads - The payload to sign as an array of 32 bytes
+   * @param keyType - The type of key to use for signing, either 'secp256k1' or 'ed25519'
+   * @returns Promise resolving to the signature
    */
   abstract sign(
-    args: SignArgsBitcoin & Record<string, unknown>
-  ): Promise<RSVSignature[]>
-  abstract sign(
-    args: PayloadV2Args & Record<string, unknown>
-  ): Promise<Ed25519Signature>
-  abstract sign(args: SignArgs & Record<string, unknown>): Promise<RSVSignature>
+    payloads: Payload[],
+    path: string,
+    keyType: 'secp256k1' | 'ed25519',
+    signerAccount: {
+      signAndSendTransactions: (transactions: any) => Promise<any>
+    }
+  ): Promise<RSVSignature>
 
   /**
    * Gets the public key associated with this contract instance.
