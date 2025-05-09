@@ -1,7 +1,6 @@
 import { type CodeResult } from '@near-js/types'
 import { type Transaction } from '@near-wallet-selector/core'
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
-import BN from 'bn.js'
 import { providers } from 'near-api-js'
 
 import {
@@ -78,16 +77,8 @@ export class ChainSignatureContract {
     return JSON.parse(Buffer.from(res.result).toString())
   }
 
-  async getCurrentSignatureDeposit(): Promise<BN> {
-    const res = await this.viewFunction({
-      contractId: this.contractId,
-      method: 'experimental_signature_deposit',
-    })
-    return new BN(
-      res.toLocaleString('fullwide', {
-        useGrouping: false,
-      })
-    )
+  getCurrentSignatureDeposit(): number {
+    return 1
   }
 
   async sign({
