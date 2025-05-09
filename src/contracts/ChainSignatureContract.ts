@@ -1,5 +1,5 @@
 import { type CodeResult } from '@near-js/types'
-import { type FinalExecutionOutcome } from '@near-wallet-selector/core'
+import { type Transaction } from '@near-wallet-selector/core'
 import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
 import BN from 'bn.js'
 import { providers } from 'near-api-js'
@@ -8,6 +8,7 @@ import {
   type RSVSignature,
   type UncompressedPubKeySEC1,
   type NajPublicKey,
+  type MPCSignature,
 } from '@types'
 
 import { NEAR_MAX_GAS } from './constants'
@@ -21,14 +22,15 @@ interface ViewMethodParams {
 
 export type HashToSign = number[]
 
-export interface SignArgs {
+export interface SignArgs<T = unknown> {
   payloads: HashToSign[]
   path: string
-  keyType: 'secp256k1' | 'ed25519'
+  keyType: 'Eddsa' | 'Ecdsa'
   signerAccount: {
+    accountId: string
     signAndSendTransactions: (transactions: {
-      transactions: any[]
-    }) => Promise<any>
+      transactions: Transaction[]
+    }) => Promise<T>
   }
 }
 
@@ -105,6 +107,7 @@ export class ChainSignatureContract {
     signerAccount,
   }: SignArgs): Promise<RSVSignature[]> {
     const transactions = payloads.map((payload) => ({
+      signerId: signerAccount.accountId,
       receiverId: this.contractId,
       actions: [
         {
@@ -115,10 +118,10 @@ export class ChainSignatureContract {
               request: {
                 payload_v2: { [keyType]: payload },
                 path,
-                key_version: 0,
+                domain_id: keyType === 'Eddsa' ? 1 : 0,
               },
             },
-            gas: NEAR_MAX_GAS,
+            gas: NEAR_MAX_GAS.toString(),
             deposit: '1',
           },
         },
@@ -127,11 +130,12 @@ export class ChainSignatureContract {
 
     const sentTxs = (await signerAccount.signAndSendTransactions({
       transactions,
-    })) as FinalExecutionOutcome[]
+    })) as MPCSignature[]
 
     const rsvSignatures = sentTxs.map((tx) =>
-      responseToMpcSignature({ response: tx })
+      responseToMpcSignature({ signature: tx })
     )
+
     return rsvSignatures as RSVSignature[]
   }
 

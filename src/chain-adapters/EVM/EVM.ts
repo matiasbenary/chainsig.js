@@ -244,11 +244,11 @@ export class EVM extends ChainAdapter<
                   userOp.paymaster &&
                   isAddress(userOp.paymaster)
                   ? concat([
-                    userOp.paymaster,
-                    pad(userOp.paymasterVerificationGasLimit, { size: 16 }),
-                    pad(userOp.paymasterPostOpGasLimit, { size: 16 }),
-                    userOp.paymasterData,
-                  ])
+                      userOp.paymaster,
+                      pad(userOp.paymasterVerificationGasLimit, { size: 16 }),
+                      pad(userOp.paymasterPostOpGasLimit, { size: 16 }),
+                      userOp.paymasterData,
+                    ])
                   : 'paymasterAndData' in userOp
                     ? userOp.paymasterAndData
                     : '0x'
@@ -325,7 +325,7 @@ export class EVM extends ChainAdapter<
       const hash = await this.client.sendRawTransaction({
         serializedTransaction: txSerialized as `0x${string}`,
       })
-      return { hash: hash }
+      return { hash }
     } catch (error) {
       console.error('Transaction broadcast failed:', error)
       throw new Error('Failed to broadcast transaction.')

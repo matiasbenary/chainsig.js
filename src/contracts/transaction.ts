@@ -2,80 +2,29 @@ import { InMemoryKeyStore } from '@near-js/keystores'
 import type { Action as TransactionAction } from '@near-js/transactions'
 import type { TxExecutionStatus } from '@near-js/types'
 import type {
-  Action as WalletAction,
   FinalExecutionOutcome,
   NetworkId,
 } from '@near-wallet-selector/core'
-import BN from 'bn.js'
 import {
   transactions,
   utils as nearUtils,
   connect,
   type KeyPair,
 } from 'near-api-js'
-import { getTransactionLastResult } from 'near-api-js/lib/providers'
 import { withRetry } from 'viem'
 
-import { ChainSignatureContract } from '@contracts/ChainSignatureContract'
-import { NEAR_MAX_GAS } from '@contracts/constants'
-import { type ChainSignatureContractIds } from '@contracts/types'
 import {
   type RSVSignature,
-  type KeyDerivationPath,
   type MPCSignature,
-  type HashToSign,
   type Ed25519Signature,
 } from '@types'
 import { cryptography } from '@utils'
 
-export const mpcPayloadsToChainSigTransaction = async ({
-  networkId,
-  contractId,
-  hashesToSign,
-  path,
-}: {
-  networkId: NetworkId
-  contractId: ChainSignatureContractIds
-  hashesToSign: HashToSign[]
-  path: KeyDerivationPath
-}): Promise<{
-  receiverId: string
-  actions: WalletAction[]
-}> => {
-  const contract = new ChainSignatureContract({
-    networkId,
-    contractId,
-  })
-
-  const currentContractFee = await contract.getCurrentSignatureDeposit()
-
-  return {
-    receiverId: contractId,
-    actions: hashesToSign.map((payload) => ({
-      type: 'FunctionCall',
-      params: {
-        methodName: 'sign',
-        args: {
-          request: {
-            payload: Array.from(payload),
-            path,
-            key_version: 0,
-          },
-        },
-        gas: NEAR_MAX_GAS.div(new BN(hashesToSign.length)).toString(),
-        deposit: currentContractFee?.toString() || '1',
-      },
-    })),
-  }
-}
-
 export const responseToMpcSignature = ({
-  response,
+  signature,
 }: {
-  response: FinalExecutionOutcome
+  signature: MPCSignature
 }): RSVSignature | Ed25519Signature | undefined => {
-  const signature = getTransactionLastResult(response) as MPCSignature
-  console.log('signature', signature)
   if (
     'scheme' in signature &&
     signature.scheme === 'Ed25519' &&
