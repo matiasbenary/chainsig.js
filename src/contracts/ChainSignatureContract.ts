@@ -16,6 +16,7 @@ import { responseToMpcSignature } from './transaction'
 import { type NearNetworkIds } from './types'
 
 interface ViewMethodParams {
+  contractId: string
   method: string
   args?: Record<string, unknown>
 }
@@ -61,25 +62,14 @@ export class ChainSignatureContract {
     )
   }
 
-  private async viewFunction(params: {
-    method: 'public_key'
-    args?: Record<string, unknown>
-  }): Promise<NajPublicKey>
-  private async viewFunction(params: {
-    method: 'experimental_signature_deposit'
-    args?: Record<string, unknown>
-  }): Promise<number>
-  private async viewFunction(params: {
-    method: 'derived_public_key'
-    args: { path: string; predecessor: string; domain_id?: number }
-  }): Promise<NajPublicKey | `Ed25519:${string}`>
   private async viewFunction({
+    contractId,
     method,
     args = {},
-  }: ViewMethodParams): Promise<unknown> {
+  }: ViewMethodParams): Promise<number | string | object> {
     const res = await this.provider.query<CodeResult>({
       request_type: 'call_function',
-      account_id: this.contractId,
+      account_id: contractId,
       method_name: method,
       args_base64: Buffer.from(JSON.stringify(args)).toString('base64'),
       finality: 'optimistic',
@@ -89,12 +79,12 @@ export class ChainSignatureContract {
   }
 
   async getCurrentSignatureDeposit(): Promise<BN> {
+    const res = await this.viewFunction({
+      contractId: this.contractId,
+      method: 'experimental_signature_deposit',
+    })
     return new BN(
-      (
-        await this.viewFunction({
-          method: 'experimental_signature_deposit',
-        })
-      ).toLocaleString('fullwide', {
+      res.toLocaleString('fullwide', {
         useGrouping: false,
       })
     )
@@ -141,9 +131,10 @@ export class ChainSignatureContract {
 
   async getPublicKey(): Promise<UncompressedPubKeySEC1> {
     const najPubKey = await this.viewFunction({
+      contractId: this.contractId,
       method: 'public_key',
     })
-    return najToUncompressedPubKeySEC1(najPubKey)
+    return najToUncompressedPubKeySEC1(najPubKey as NajPublicKey)
   }
 
   async getDerivedPublicKey(args: {
@@ -153,6 +144,7 @@ export class ChainSignatureContract {
   }): Promise<UncompressedPubKeySEC1 | `Ed25519:${string}`> {
     if (args.IsEd25519) {
       return (await this.viewFunction({
+        contractId: this.contractId,
         method: 'derived_public_key',
         args: {
           path: args.path,
@@ -163,6 +155,7 @@ export class ChainSignatureContract {
     }
 
     const najPubKey = (await this.viewFunction({
+      contractId: this.contractId,
       method: 'derived_public_key',
       args,
     })) as NajPublicKey
