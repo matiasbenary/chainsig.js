@@ -1,6 +1,9 @@
 import { type CodeResult } from '@near-js/types'
 import { type Transaction } from '@near-wallet-selector/core'
-import { najToUncompressedPubKeySEC1 } from '@utils/cryptography'
+import {
+  najToUncompressedPubKeySEC1,
+  uint8ArrayToHex,
+} from '@utils/cryptography'
 import { providers } from 'near-api-js'
 
 import {
@@ -97,7 +100,7 @@ export class ChainSignatureContract {
             methodName: 'sign',
             args: {
               request: {
-                payload_v2: { [keyType]: payload },
+                payload_v2: { [keyType]: uint8ArrayToHex(payload) },
                 path,
                 domain_id: keyType === 'Eddsa' ? 1 : 0,
               },
