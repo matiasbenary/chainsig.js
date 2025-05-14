@@ -128,13 +128,11 @@ class TestBitcoin extends ChainAdapter<
     }
   }
 
+  // @ts-expect-error: Test implementation with different parameter types
   async deriveAddressAndPublicKey(
     predecessor: string,
     path: KeyDerivationPath
-  ): Promise<{
-    address: string
-    publicKey: string
-  }> {
+  ): Promise<{ address: string; publicKey: string }> {
     return {
       address: testAddress,
       publicKey: '04'.padEnd(130, 'a'),
@@ -302,5 +300,22 @@ describe('Bitcoin', () => {
     const txHex = '01000000000000000000'
     const txId = await bitcoin.broadcastTx(txHex)
     expect(txId.hash).toBe('mock_txid')
+  })
+
+  it('Can derive a BTC address from account with contract and wallet keys', async () => {
+    const accountId = 'my_account'
+    const result = await bitcoin.deriveAddressAndPublicKey(
+      accountId,
+      // Type cast to match expected parameter type
+      {
+        index: 0,
+        scheme: 'secp256k1',
+      } as any
+    )
+
+    expect(result.address).toBeDefined()
+    expect(typeof result.address).toBe('string')
+    expect(result.publicKey).toBeDefined()
+    expect(typeof result.publicKey).toBe('string')
   })
 })

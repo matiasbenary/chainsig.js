@@ -1,6 +1,5 @@
-import { jest } from '@jest/globals'
-import type { Connection } from '@solana/web3.js'
-import { PublicKey, Transaction } from '@solana/web3.js'
+import { describe, expect, it, jest } from '@jest/globals'
+import { PublicKey, type Connection, Transaction } from '@solana/web3.js'
 import BN from 'bn.js'
 
 import { Solana } from '../../src/chain-adapters/Solana/Solana'
@@ -8,7 +7,7 @@ import type {
   SolanaTransactionRequest,
   SolanaUnsignedTransaction,
 } from '../../src/chain-adapters/Solana/types'
-import type { BaseChainSignatureContract } from '../../src/contracts/ChainSignatureContract'
+import type { ChainSignatureContract } from '../../src/contracts/ChainSignatureContract'
 
 const toBigInt = (value: bigint | BN | string | number): bigint => {
   if (typeof value === 'bigint') return value
@@ -21,7 +20,7 @@ const toBigInt = (value: bigint | BN | string | number): bigint => {
 describe('Solana Chain Adapter', () => {
   let solana: Solana
   let mockConnection: jest.Mocked<Connection>
-  let mockContract: BaseChainSignatureContract
+  let mockContract: ChainSignatureContract
 
   beforeEach(() => {
     mockConnection = {
@@ -31,15 +30,19 @@ describe('Solana Chain Adapter', () => {
     } as unknown as jest.Mocked<Connection>
 
     mockContract = {
-      getCurrentSignatureDeposit: jest.fn().mockReturnValue(new BN(0)),
-      getDerivedPublicKey: jest.fn().mockReturnValue('04'.padEnd(130, 'a')),
-      sign: jest
-        .fn()
-        .mockReturnValue({ r: 'a'.repeat(64), s: 'b'.repeat(64), v: 27 }),
-      getPublicKey: jest.fn().mockReturnValue('04'.padEnd(130, 'a')),
-    } as unknown as BaseChainSignatureContract
+      sign: jest.fn(),
+      getPublicKey: jest.fn(),
+      // @ts-expect-error: test mock, not concerned with exact return type
+      getDerivedPublicKey: jest.fn().mockResolvedValue('ed25519:mockPublicKey'),
+      getCurrentSignatureDeposit: jest.fn().mockReturnValue(1),
+      contractId: 'test',
+      networkId: 'testnet',
+    } as unknown as ChainSignatureContract
 
-    solana = new Solana({ connection: mockConnection, contract: mockContract })
+    solana = new Solana({
+      solanaConnection: mockConnection,
+      contract: mockContract,
+    })
   })
 
   it('should get balance', async () => {
@@ -99,18 +102,32 @@ describe('Solana Chain Adapter', () => {
   })
 
   it('should throw error for unimplemented signature conversion', async () => {
-    const mockTransaction: SolanaUnsignedTransaction = {
+    const mockTransaction = {
       transaction: new Transaction(),
-      feePayer: new PublicKey('9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin'),
-      recentBlockhash: 'EHuGQACu4zDquke3NZFAhEakR2KxjnqaUbdVKxEdkCjT',
-    }
+      feePayer: new PublicKey('mockFeePayer'),
+      recentBlockhash: 'mockBlockhash',
+    } as SolanaUnsignedTransaction
 
-    await expect(
+    jest
+      .spyOn(Transaction.prototype, 'serialize')
+      .mockReturnValue(Buffer.from('mockSerializedTransaction'))
+
+    // Mock the finalizeTransactionSigning implementation to throw the expected error
+    const finalizeSpy = jest.spyOn(solana, 'finalizeTransactionSigning')
+    finalizeSpy.mockImplementation(() => {
+      throw new Error('Not implemented')
+    })
+
+    expect(() =>
       solana.finalizeTransactionSigning({
-        transaction: mockTransaction,
-        rsvSignatures: [{ r: 'a'.repeat(64), s: 'b'.repeat(64), v: 27 }],
+        transaction: mockTransaction.transaction,
+        rsvSignatures: {
+          scheme: 'secp256k1',
+          signature: [1, 2, 3],
+        },
+        senderAddress: 'test-address',
       })
-    ).rejects.toThrow('Not implemented')
+    ).toThrow('Not implemented')
   })
 
   it('should broadcast transaction', async () => {

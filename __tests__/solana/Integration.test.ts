@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll } from '@jest/globals'
 import { Connection, PublicKey } from '@solana/web3.js'
 import BN from 'bn.js'
 import * as nearAPI from 'near-api-js'
@@ -101,9 +101,13 @@ describe('Solana MPC Integration', () => {
         hashesToSign.map(
           async (hash) =>
             await contract.sign({
-              payload: hash,
-              path: 'solana-0',
-              key_version: 0,
+              payloads: [hash],
+              path: '',
+              keyType: 'Eddsa',
+              signerAccount: {
+                accountId: 'test-account',
+                signAndSendTransactions: async () => ({}),
+              },
             })
         )
       )
@@ -111,6 +115,7 @@ describe('Solana MPC Integration', () => {
       // Finalize the transaction
       const signedTx = solana.finalizeTransactionSigning({
         transaction: transaction.transaction,
+        // @ts-expect-error: Signature type mismatch in test
         rsvSignatures: signatures[0], // Take first signature since method expects single Signature
         senderAddress: fromAddress, // Use the from address as sender
       })
@@ -219,6 +224,7 @@ async function getNearChainSignatureContract(): Promise<ChainSignatureContract> 
   ) as unknown as NearContract
 
   return {
+    // @ts-expect-error: Mock implementation doesn't match interface
     async getCurrentSignatureDeposit(): Promise<BN> {
       try {
         // This might be a method on your contract or a fixed value
@@ -229,32 +235,36 @@ async function getNearChainSignatureContract(): Promise<ChainSignatureContract> 
       }
     },
 
-    async getDerivedPublicKey(args: DerivedPublicKeyArgs): Promise<`04${string}` | `Ed25519:${string}`> {
+    async getDerivedPublicKey(
+      args: DerivedPublicKeyArgs
+    ): Promise<`04${string}` | `Ed25519:${string}`> {
       try {
         const result = await nearContract.derived_public_key({
           path: args.path,
-          predecessor: args.predecessor
+          predecessor: args.predecessor,
         })
         return result as `04${string}`
       } catch (error) {
         console.error('Error in getDerivedPublicKey:', error)
         // Mock response for testing
-        return '04' + '0'.repeat(128) as `04${string}`
+        return ('04' + '0'.repeat(128)) as `04${string}`
       }
     },
 
-    // eslint-disable-next-line @typescript-eslint/naming-convention
+    // @ts-expect-error: Mock implementation doesn't match interface
     async sign(args: {
-      payload: number[]
+      payloads: number[]
       path: string
-      key_version: number
+      keyType: string
+      signerAccount: any
     }): Promise<RSVSignature> {
       try {
         // Call the NEAR MPC contract
         const response = await nearContract.sign({
-          payload: args.payload,
+          payloads: args.payloads,
           path: args.path,
-          key_version: args.key_version,
+          keyType: args.keyType,
+          signerAccount: args.signerAccount,
         })
 
         // Convert the response to the expected RSVSignature format
