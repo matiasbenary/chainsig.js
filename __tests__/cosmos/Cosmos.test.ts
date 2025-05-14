@@ -12,17 +12,16 @@ import {
   type SignArgs,
 } from '../../src/contracts/ChainSignatureContract'
 
-// SKIPPED: This test relies on 'elliptic' module imports that are challenging to mock without source code changes
-// The error is: "SyntaxError: The requested module 'elliptic' does not provide an export named 'ec'"
-// To fix this properly, we'd need to update the source code to use a different import pattern,
-// or create a more sophisticated mock.
-
-// Mock at the top, before importing any other modules
+// Mock elliptic related dependencies
 jest.mock('elliptic', () => {
   class EC {
-    constructor() {}
+    curve: any
 
-    keyFromPrivate() {
+    constructor(curve: any) {
+      this.curve = curve
+    }
+
+    keyFromPrivate(): any {
       return {
         getPublic: () => ({
           encode: () => Buffer.from('mock_public_key'),
@@ -31,7 +30,7 @@ jest.mock('elliptic', () => {
       }
     }
 
-    keyFromPublic() {
+    keyFromPublic(): any {
       return {
         getPublic: () => ({
           encode: () => Buffer.from('mock_public_key'),
@@ -42,14 +41,10 @@ jest.mock('elliptic', () => {
     }
   }
 
-  // Export directly as an object with an ec property
-  return { ec: EC }
+  return {
+    ec: EC,
+  }
 })
-
-// import { ethers } from 'ethers';
-// import { serializeTransaction } from 'ethers/lib/utils';
-
-// Mock elliptic is already in jest.setup.ts
 
 const mockContract = {
   getCurrentSignatureDeposit: () => 1,
@@ -71,7 +66,7 @@ const mockContract = {
     ('04' + '0'.repeat(128)) as `04${string}`,
 } as any as ChainSignatureContract
 
-describe.skip('Cosmos', () => {
+describe('Cosmos', () => {
   let cosmos: Cosmos
 
   beforeEach(() => {

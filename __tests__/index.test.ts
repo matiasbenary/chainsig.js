@@ -6,11 +6,6 @@ import { Bitcoin } from '../src/chain-adapters/Bitcoin/Bitcoin'
 import { Cosmos } from '../src/chain-adapters/Cosmos/Cosmos'
 import { EVM } from '../src/chain-adapters/EVM/EVM'
 
-// SKIPPED: This test relies on 'elliptic' module imports that are challenging to mock without source code changes
-// The error is: "SyntaxError: The requested module 'elliptic' does not provide an export named 'ec'"
-// To fix this properly, we'd need to update the source code to use a different import pattern,
-// or create a more sophisticated mock.
-
 // Mock modules that use elliptic
 jest.mock('../src/utils/cryptography', () => ({
   toRSV: jest.fn(),
@@ -20,7 +15,41 @@ jest.mock('../src/utils/cryptography', () => ({
   uint8ArrayToHex: jest.fn(),
 }))
 
-describe.skip('SDK exports', () => {
+// Mock elliptic related dependencies
+jest.mock('elliptic', () => {
+  class EC {
+    curve: any
+
+    constructor(curve: any) {
+      this.curve = curve
+    }
+
+    keyFromPrivate(): any {
+      return {
+        getPublic: () => ({
+          encode: () => Buffer.from('mock_public_key'),
+          encodeCompressed: () => Buffer.from('mock_compressed_key'),
+        }),
+      }
+    }
+
+    keyFromPublic(): any {
+      return {
+        getPublic: () => ({
+          encode: () => Buffer.from('mock_public_key'),
+          encodeCompressed: () => Buffer.from('mock_compressed_key'),
+        }),
+        verify: () => true,
+      }
+    }
+  }
+
+  return {
+    ec: EC,
+  }
+})
+
+describe('SDK exports', () => {
   it('should export utils', () => {
     expect(utils).toBeDefined()
   })

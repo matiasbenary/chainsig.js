@@ -15,6 +15,65 @@ declare global {
 
 export {}
 
+// Mock elliptic
+class EC {
+  curve: any
+
+  constructor(curve: any) {
+    this.curve = curve
+  }
+
+  keyFromPrivate(): any {
+    return {
+      getPublic: () => ({
+        encode: () => Buffer.from('mock_public_key'),
+        encodeCompressed: () => Buffer.from('mock_compressed_key'),
+      }),
+    }
+  }
+
+  keyFromPublic(): any {
+    return {
+      getPublic: () => ({
+        encode: () => Buffer.from('mock_public_key'),
+        encodeCompressed: () => Buffer.from('mock_compressed_key'),
+      }),
+      verify: () => true,
+    }
+  }
+}
+
+jest.mock('elliptic', () => ({
+  ec: EC,
+  version: '6.6.1',
+  utils: {
+    assert: () => {},
+    toArray: () => {},
+    zero2: () => {},
+    toHex: () => {},
+    encode: () => {},
+  },
+  rand: () => {},
+  curve: {
+    base: class {},
+    short: class {},
+    mont: class {},
+    edwards: class {},
+  },
+  curves: {
+    PresetCurve: class {},
+    p192: {},
+    p224: {},
+    p256: {},
+    p384: {},
+    p521: {},
+    curve25519: {},
+    ed25519: {},
+    secp256k1: {},
+  },
+  eddsa: class {},
+}))
+
 // Mock bn.js
 class BN {
   value: bigint
@@ -234,87 +293,6 @@ jest.mock('@ethersproject/bignumber', () => ({
     from: (value: any) => new BN(value),
   },
 }))
-
-// Create a proper elliptic mock
-jest.mock('elliptic', () => {
-  // Create the EC class
-  class EC {
-    curve: any
-    g: any
-
-    constructor(curve: string) {
-      this.curve = {
-        n: BigInt(1),
-        point: (x: string, y: string) => ({
-          add: () => ({
-            getX: () => ({ toString: () => '123456789abcdef' }),
-            getY: () => ({ toString: () => '123456789abcdef' }),
-          }),
-        }),
-      }
-      this.g = {
-        mul: () => ({}),
-      }
-    }
-
-    keyFromPrivate() {
-      return {
-        getPublic: () => ({
-          encode: () => Buffer.from('mock_public_key'),
-          encodeCompressed: () => Buffer.from('mock_compressed_key'),
-        }),
-      }
-    }
-
-    keyFromPublic() {
-      return {
-        getPublic: () => ({
-          encode: () => Buffer.from('mock_public_key'),
-          encodeCompressed: () => Buffer.from('mock_compressed_key'),
-        }),
-        verify: () => true,
-      }
-    }
-  }
-
-  // Create a complete mock object that satisfies module.exports
-  const mock = {
-    version: '6.6.1',
-    utils: {
-      assert: () => {},
-      toArray: () => {},
-      zero2: () => {},
-      toHex: () => {},
-      encode: () => {},
-    },
-    rand: () => {},
-    curve: {
-      base: class {},
-      short: class {},
-      mont: class {},
-      edwards: class {},
-    },
-    curves: {
-      PresetCurve: class {},
-      p192: {},
-      p224: {},
-      p256: {},
-      p384: {},
-      p521: {},
-      curve25519: {},
-      ed25519: {},
-      secp256k1: {},
-    },
-    eddsa: class {},
-    ec: EC,
-  }
-
-  // Handle both CommonJS and ESM imports
-  // @ts-expect-error - intentional for mocking
-  mock.default = mock
-
-  return mock
-})
 
 // Mock other ESM modules as needed
 jest.mock('@noble/curves/secp256k1', () => ({
