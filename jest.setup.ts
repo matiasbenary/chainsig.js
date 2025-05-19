@@ -15,64 +15,7 @@ declare global {
 
 export {}
 
-// Mock elliptic
-class EC {
-  curve: any
-
-  constructor(curve: any) {
-    this.curve = curve
-  }
-
-  keyFromPrivate(): any {
-    return {
-      getPublic: () => ({
-        encode: () => Buffer.from('mock_public_key'),
-        encodeCompressed: () => Buffer.from('mock_compressed_key'),
-      }),
-    }
-  }
-
-  keyFromPublic(): any {
-    return {
-      getPublic: () => ({
-        encode: () => Buffer.from('mock_public_key'),
-        encodeCompressed: () => Buffer.from('mock_compressed_key'),
-      }),
-      verify: () => true,
-    }
-  }
-}
-
-jest.mock('elliptic', () => ({
-  ec: EC,
-  version: '6.6.1',
-  utils: {
-    assert: () => {},
-    toArray: () => {},
-    zero2: () => {},
-    toHex: () => {},
-    encode: () => {},
-  },
-  rand: () => {},
-  curve: {
-    base: class {},
-    short: class {},
-    mont: class {},
-    edwards: class {},
-  },
-  curves: {
-    PresetCurve: class {},
-    p192: {},
-    p224: {},
-    p256: {},
-    p384: {},
-    p521: {},
-    curve25519: {},
-    ed25519: {},
-    secp256k1: {},
-  },
-  eddsa: class {},
-}))
+// Removed elliptic mock since we're now using a dedicated mock file in __mocks__/elliptic.ts
 
 // Mock bn.js
 class BN {

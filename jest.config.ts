@@ -25,6 +25,7 @@ const config: Config = {
     '^@chain-adapters/(.*)$': '<rootDir>/src/chain-adapters/$1',
     '^@contracts/(.*)$': '<rootDir>/src/contracts/$1',
     '^@utils/(.*)$': '<rootDir>/src/utils/$1',
+    '^@utils/cryptography$': '<rootDir>/__mocks__/utils-cryptography.ts',
     '^@constants$': '<rootDir>/src/constants.ts',
     '^@types$': '<rootDir>/src/types.ts',
     '^@chain-adapters$': '<rootDir>/src/chain-adapters/index.ts',
@@ -34,6 +35,9 @@ const config: Config = {
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   moduleDirectories: ['node_modules'],
+  // For ES modules compatibility
+  testRunner: 'jest-circus/runner',
+  transformIgnorePatterns: ['/node_modules/(?!(@cosmjs|bitcoinjs-lib)/)'],
 }
 
 export default config

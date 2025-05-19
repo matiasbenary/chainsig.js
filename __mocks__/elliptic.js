@@ -1,8 +1,18 @@
 // Create the EC class
 function EC(curve) {
-  this.curve = curve;
+  this.curve = {
+    point: (x, y) => ({
+      add: (point) => ({
+        getX: () => ({ toString: () => x }),
+        getY: () => ({ toString: () => y })
+      })
+    })
+  };
   this.g = {
-    mul: () => ({}),
+    mul: (scalar) => ({
+      getX: () => ({ toString: () => '123456' }),
+      getY: () => ({ toString: () => '789012' })
+    }),
   };
 }
 
@@ -25,8 +35,8 @@ EC.prototype.keyFromPublic = function() {
   };
 };
 
-// CommonJS exports - must use module.exports (not ESM export)
-module.exports = {
+// Create the exports object
+const ellipticExports = {
   ec: EC,
   version: '6.6.1',
   utils: {
@@ -55,4 +65,13 @@ module.exports = {
     secp256k1: {},
   },
   eddsa: function() {},
-}; 
+};
+
+// For CommonJS:
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = ellipticExports;
+}
+
+// For ESM:
+export const ec = EC;
+export default ellipticExports; 
