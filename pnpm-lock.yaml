@@ -78,7 +78,7 @@ importers:
         specifier: ^0.9.3
         version: 0.9.3
       near-api-js:
-        specifier: ^5.0.1
+        specifier: 5.1.1
         version: 5.1.1
       viem:
         specifier: ^2.22.14
@@ -117,6 +117,9 @@ importers:
       babel-jest:
         specifier: ^29.7.0
         version: 29.7.0(@babel/core@7.26.10)
+      cross-env:
+        specifier: ^7.0.3
+        version: 7.0.3
       dotenv:
         specifier: ^16.4.5
         version: 16.5.0
@@ -3007,6 +3010,11 @@ packages:
 
   create-vocs@1.0.0:
     resolution: {integrity: sha512-Lv1Bd3WZEgwG4nrogkM54m8viW+TWPlGivLyEi7aNb3cuKPsEfMDZ/kTbo87fzOGtsZ2yh7scO54ZmVhhgBgTw==}
+    hasBin: true
+
+  cross-env@7.0.3:
+    resolution: {integrity: sha512-+/HKd6EgcQCJGh2PSjZuUitQBQynKor4wrFbRg4DtAgS1aWO+gU52xpH7M9ScGgXSYmAVS9bIJ8EzuaGw0oNAw==}
+    engines: {node: '>=10.14', npm: '>=6', yarn: '>=1'}
     hasBin: true
 
   cross-spawn@7.0.6:
@@ -10095,6 +10103,10 @@ snapshots:
       detect-package-manager: 3.0.2
       fs-extra: 11.3.0
       picocolors: 1.1.1
+
+  cross-env@7.0.3:
+    dependencies:
+      cross-spawn: 7.0.6
 
   cross-spawn@7.0.6:
     dependencies:

@@ -1,4 +1,5 @@
 import { type KeyPair } from '@near-js/crypto'
+import { createPublicClient, http } from 'viem'
 
 import * as chainAdapters from '@chain-adapters'
 import { BTCRpcAdapters } from '@chain-adapters/Bitcoin/BTCRpcAdapter'
@@ -10,7 +11,6 @@ import {
   type CosmosRequest,
   type EVMRequest,
 } from '@contracts/types'
-import { createPublicClient, http } from 'viem';
 
 export const EVMTransaction = async (
   req: EVMRequest,
@@ -26,8 +26,6 @@ export const EVMTransaction = async (
     const contract = new ChainSignatureContract({
       networkId: req.nearAuthentication.networkId,
       contractId: req.chainConfig.contract,
-      accountId: account.accountId,
-      keypair: keyPair,
     })
 
     const evm = new chainAdapters.evm.EVM({
@@ -40,15 +38,19 @@ export const EVMTransaction = async (
     const { transaction, hashesToSign } =
       await evm.prepareTransactionForSigning(req.transaction)
 
-    const signature = await contract.sign({
-      payload: hashesToSign[0],
+    const signatures = await contract.sign({
+      payloads: [hashesToSign[0]],
       path: req.derivationPath,
-      key_version: 0,
+      keyType: 'Ecdsa',
+      signerAccount: {
+        accountId: account.accountId,
+        signAndSendTransactions: async () => ({}),
+      },
     })
 
     const txSerialized = evm.finalizeTransactionSigning({
       transaction,
-      rsvSignatures: [signature],
+      rsvSignatures: signatures,
     })
 
     const txHash = await evm.broadcastTx(txSerialized)
@@ -80,8 +82,6 @@ export const BTCTransaction = async (
     const contract = new ChainSignatureContract({
       networkId: req.nearAuthentication.networkId,
       contractId: req.chainConfig.contract,
-      accountId: account.accountId,
-      keypair: keyPair,
     })
 
     const btc = new chainAdapters.btc.Bitcoin({
@@ -97,16 +97,20 @@ export const BTCTransaction = async (
       hashesToSign.map(
         async (payload) =>
           await contract.sign({
-            payload,
+            payloads: [payload],
             path: req.derivationPath,
-            key_version: 0,
+            keyType: 'Ecdsa',
+            signerAccount: {
+              accountId: account.accountId,
+              signAndSendTransactions: async () => ({}),
+            },
           })
       )
     )
 
     const txSerialized = btc.finalizeTransactionSigning({
       transaction,
-      rsvSignatures: signatures,
+      rsvSignatures: signatures.flat(),
     })
 
     const txHash = await btc.broadcastTx(txSerialized)
@@ -137,8 +141,6 @@ export const CosmosTransaction = async (
     const contract = new ChainSignatureContract({
       networkId: req.nearAuthentication.networkId,
       contractId: req.chainConfig.contract,
-      accountId: account.accountId,
-      keypair: keyPair,
     })
 
     const cosmos = new chainAdapters.cosmos.Cosmos({
@@ -153,16 +155,20 @@ export const CosmosTransaction = async (
       hashesToSign.map(
         async (payload) =>
           await contract.sign({
-            payload,
+            payloads: [payload],
             path: req.derivationPath,
-            key_version: 0,
+            keyType: 'Ecdsa',
+            signerAccount: {
+              accountId: account.accountId,
+              signAndSendTransactions: async () => ({}),
+            },
           })
       )
     )
 
     const txSerialized = cosmos.finalizeTransactionSigning({
       transaction,
-      rsvSignatures: signatures,
+      rsvSignatures: signatures.flat(),
     })
 
     const txHash = await cosmos.broadcastTx(txSerialized)

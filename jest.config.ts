@@ -31,6 +31,8 @@ const config: Config = {
     '^@chain-adapters$': '<rootDir>/src/chain-adapters/index.ts',
     '^@contracts$': '<rootDir>/src/contracts/index.ts',
     '^@utils$': '<rootDir>/src/utils/index.ts',
+    '^elliptic$': '<rootDir>/__mocks__/elliptic.ts',
+    '^js-sha3$': '<rootDir>/__mocks__/js-sha3.ts',
   },
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],

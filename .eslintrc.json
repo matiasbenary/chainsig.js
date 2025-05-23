@@ -73,6 +73,13 @@
         "@typescript-eslint/ban-ts-comment": "off",
         "@typescript-eslint/no-explicit-any": "off"
       }
+    },
+    {
+      "files": ["__tests__/**/*.test.ts"],
+      "rules": {
+        "@typescript-eslint/consistent-type-assertions": "off",
+        "@typescript-eslint/no-unsafe-argument": "off"
+      }
     }
   ]
 }
