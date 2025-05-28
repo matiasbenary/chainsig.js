@@ -119,13 +119,10 @@ export class Aptos extends ChainAdapter<AnyRawTransaction, AnyRawTransaction> {
     }
   }
 
-  finalizeTransactionSigning(params: {
-    transaction: AnyRawTransaction
+  rsvSignatureToSenderAuthenticator(params: {
     rsvSignatures: Signature
     publicKey: string
-    additionalSignersAuthenticators?: AccountAuthenticator[]
-    feePayerAuthenticator?: AccountAuthenticator
-  }): string {
+  }): AccountAuthenticatorEd25519 {
     const signatureBuffer = Buffer.from(params.rsvSignatures.signature)
 
     const isPublicKeyPrefixWith0x = params.publicKey.startsWith('0x')
@@ -142,6 +139,21 @@ export class Aptos extends ChainAdapter<AnyRawTransaction, AnyRawTransaction> {
       new Ed25519Signature(signatureBuffer.toString('hex'))
     )
 
+    return senderAuthenticator
+  }
+
+  finalizeTransactionSigning(params: {
+    transaction: AnyRawTransaction
+    rsvSignatures: Signature
+    publicKey: string
+    additionalSignersAuthenticators?: AccountAuthenticator[]
+    feePayerAuthenticator?: AccountAuthenticator
+  }): string {
+    const senderAuthenticator = this.rsvSignatureToSenderAuthenticator({
+      rsvSignatures: params.rsvSignatures,
+      publicKey: params.publicKey,
+    })
+
     const signedTx = generateSignedTransaction({
       transaction: params.transaction,
       senderAuthenticator,
@@ -152,7 +164,7 @@ export class Aptos extends ChainAdapter<AnyRawTransaction, AnyRawTransaction> {
     return '0x' + Buffer.from(signedTx).toString('hex')
   }
 
-  deserializeSignedTransaction(
+  private deserializeSignedTransaction(
     serializedSignedTransaction: string
   ): SignedTransaction {
     const isPrefixWith0x = serializedSignedTransaction.startsWith('0x')
