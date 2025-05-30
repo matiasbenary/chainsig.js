@@ -1,29 +1,29 @@
 {
   "name": "chainsig.js",
-  "version": "1.1.1",
+  "version": "1.1.6",
   "description": "ChainSig Library",
   "type": "module",
+  "files": [
+    "dist",
+    "package.json",
+    "README.md",
+    "LICENSE"
+  ],
   "exports": {
     ".": {
-      "types": "./dist/esm/index.d.ts",
-      "browser": {
-        "import": "./browser/index.browser.js",
-        "require": "./browser/index.browser.cjs"
-      },
-      "node": {
-        "import": "./dist/esm/index.js",
-        "require": "./dist/esm/index.node.cjs"
-      },
-      "default": "./browser/index.browser.js"
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "require": "./index.cjs",
+      "default": "./index.js"
     }
   },
-  "main": "./dist/node/index.node.cjs",
-  "module": "./dist/esm/index.js",
-  "browser": "./browser/index.browser.js",
-  "types": "./dist/esm/index.d.ts",
+  "main": "./index.cjs",
+  "module": "./index.js",
+  "types": "./index.d.ts",
   "scripts": {
-    "watch": "tsup --watch --env.TARGET=browser",
-    "build": "rm -rf ./dist && tsc -p tsconfig.build.json",
+    "watch": "tsup --watch",
+    "build": "rm -rf ./dist && tsup --env.TARGET=node && tsup --env.TARGET=browser && npm run build:post",
+    "build:post": "jq 'del(.scripts, .devDependencies) | .files = [\"browser\", \"node\", \"package.json\", \"README.md\", \"LICENSE\"] | .exports = {\".\":{\"types\":\"./node/index.d.ts\",\"browser\":{\"import\":\"./browser/index.browser.js\",\"require\":\"./browser/index.browser.cjs\"},\"node\":{\"import\":\"./node/index.node.js\",\"require\":\"./node/index.node.cjs\"},\"import\":\"./node/index.node.js\",\"require\":\"./node/index.node.cjs\",\"default\":\"./browser/index.browser.js\"}} | .main = \"./node/index.node.cjs\" | .module = \"./node/index.node.js\" | .browser = \"./browser/index.browser.js\" | .types = \"./node/index.d.ts\"' package.json > dist/package.json && cp README.md dist/ && cp LICENSE dist/",
     "clean": "rm -rf ./dist",
     "test": "NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest -c jest.config.ts \"__tests__/(bitcoin|solana|evm/basic.test.ts)\"",
     "test:all": "NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest -c jest.config.ts __tests__/bitcoin __tests__/solana __tests__/evm/basic.test.ts",

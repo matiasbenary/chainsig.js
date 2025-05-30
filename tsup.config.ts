@@ -15,7 +15,7 @@ export default defineConfig((options) => {
 
   const target = isNode ? 'node18' : 'esnext'
   const platform = isNode ? 'node' : 'browser'
-  const outDir = `dist/${platform}`
+  const outDir = isNode ? 'dist/node' : 'dist/browser'
 
   const config: Options = {
     entry: ['src/index.ts'],
@@ -32,9 +32,36 @@ export default defineConfig((options) => {
     minify: true,
     clean: true,
     dts: isNode,
-    external: isNode
-      ? ['path', 'fs', 'crypto', 'stream', 'util', 'events', 'buffer']
-      : ['crypto', 'stream', 'util', 'events', 'buffer'],
+    external: [
+      // Node.js built-ins
+      ...(isNode ? ['path', 'fs', 'crypto', 'stream', 'util', 'events', 'buffer'] : ['crypto', 'stream', 'util', 'events', 'buffer']),
+      // External dependencies that should not be bundled
+      'cosmjs-types',
+      '@cosmjs/amino',
+      '@cosmjs/crypto', 
+      '@cosmjs/encoding',
+      '@cosmjs/math',
+      '@cosmjs/proto-signing',
+      '@cosmjs/stargate',
+      '@near-js/accounts',
+      '@near-js/crypto',
+      '@near-js/keystores', 
+      '@near-js/transactions',
+      '@near-js/types',
+      '@near-wallet-selector/core',
+      '@scure/base',
+      '@solana/web3.js',
+      'bech32',
+      'bitcoinjs-lib',
+      'bn.js',
+      'bs58',
+      'chain-registry',
+      'coinselect',
+      'elliptic',
+      'js-sha3',
+      'near-api-js',
+      'viem'
+    ],
     treeshake: true,
     splitting: false,
     esbuildOptions(options) {
@@ -50,6 +77,11 @@ export default defineConfig((options) => {
         '@utils': resolve(__dirname, './src/utils'),
         '@constants': resolve(__dirname, './src/constants.ts'),
         '@types': resolve(__dirname, './src/types.ts'),
+      }
+      
+      // Configure for proper ESM handling
+      if (options.format === 'esm') {
+        options.packages = 'external'
       }
     },
   }
