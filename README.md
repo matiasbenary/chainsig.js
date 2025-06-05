@@ -8,12 +8,29 @@ This library provides a unified interface for interacting with different blockch
 
 ## Features
 
-- **Multi-Chain Support**: Built-in support for EVM chains, Bitcoin, and Cosmos networks
+- **Multi-Chain Support**: Built-in support for EVM chains, Bitcoin, Cosmos, Solana, Aptos, and SUI networks
 - **Unified Interface**: Common API across all supported chains
 - **MPC Integration**: Secure key management and transaction signing
 - **Type Safety**: Full TypeScript support with comprehensive type definitions
 - **Modular Design**: Easy to extend with new chain implementations
 - **Secure**: No private keys stored or transmitted
+
+## Supported Chains
+
+The library provides chain adapters for the following blockchain networks:
+
+- **EVM Chains**: Ethereum, BSC, Polygon, Arbitrum, Optimism, and other EVM-compatible networks
+- **Bitcoin**: Bitcoin mainnet and testnet with P2WPKH transaction support
+- **Cosmos**: Cosmos Hub, Osmosis, and other Cosmos SDK-based chains
+- **Solana**: High-performance blockchain with native token transfers
+- **Aptos**: Move-based blockchain with Ed25519 signature support
+- **SUI**: Move-based blockchain with Ed25519 signature support
+
+Each chain adapter provides a unified interface for:
+- Address and public key derivation
+- Balance checking
+- Transaction preparation and signing
+- Transaction broadcasting
 
 ## Installation
 
