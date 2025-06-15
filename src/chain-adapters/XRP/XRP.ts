@@ -1,51 +1,55 @@
 import { createHash } from 'crypto'
 
-import { base58 } from '@scure/base'
 import { encodeAccountID } from 'ripple-address-codec'
 import { encode as encodeTx } from 'ripple-binary-codec'
 import { Client } from 'xrpl'
 
 import { ChainAdapter } from '@chain-adapters/ChainAdapter'
 import type { ChainSignatureContract } from '@contracts/ChainSignatureContract'
-import type { HashToSign, Signature, RSVSignature } from '@types'
+import type { HashToSign, RSVSignature, UncompressedPubKeySEC1 } from '@types'
+import { cryptography } from '@utils'
 
-import type {
-  XRPTransactionRequest,
-  XRPUnsignedTransaction,
-  XRPNetworkIds,
-} from './types'
+import type { XRPTransactionRequest, XRPUnsignedTransaction } from './types'
 
+/**
+ * XRP Ledger chain adapter implementation
+ *
+ * Provides functionality to interact with the XRP Ledger blockchain including
+ * balance queries, address derivation, transaction preparation, signing, and broadcasting.
+ */
 export class XRP extends ChainAdapter<
   XRPTransactionRequest,
   XRPUnsignedTransaction
 > {
   private readonly rpcUrl: string
   private readonly contract: ChainSignatureContract
-  private readonly network: XRPNetworkIds
-
   /**
-   * Creates a new XRP chain instance
+   * Creates a new XRP chain adapter instance
+   *
    * @param params - Configuration parameters
    * @param params.rpcUrl - XRP Ledger RPC endpoint URL
    * @param params.contract - Instance of the chain signature contract for MPC operations
-   * @param params.network - Network identifier (mainnet/testnet/devnet)
    */
   constructor({
     rpcUrl,
     contract,
-    network,
   }: {
     rpcUrl: string
     contract: ChainSignatureContract
-    network: XRPNetworkIds
   }) {
     super()
 
     this.rpcUrl = rpcUrl
     this.contract = contract
-    this.network = network
   }
 
+  /**
+   * Retrieves the XRP balance for a given address
+   *
+   * @param address - The XRP address to query
+   * @returns Promise resolving to balance information with amount in drops and decimal places
+   * @throws Error if the balance query fails for reasons other than account not found
+   */
   async getBalance(
     address: string
   ): Promise<{ balance: bigint; decimals: number }> {
@@ -70,20 +74,17 @@ export class XRP extends ChainAdapter<
       } catch (accountError: any) {
         await client.disconnect()
 
-        // Check if error is specifically "Account not found"
         if (
           accountError?.data?.error === 'actNotFound' ||
           accountError?.message?.includes('Account not found') ||
           accountError?.data?.error_message?.includes('Account not found')
         ) {
-          // Account doesn't exist yet (hasn't received any XRP)
           return {
             balance: 0n,
             decimals: 6,
           }
         }
 
-        // Re-throw other errors
         throw accountError
       }
     } catch (error) {
@@ -95,43 +96,44 @@ export class XRP extends ChainAdapter<
     }
   }
 
+  /**
+   * Derives an XRP address and compressed public key from the given path and predecessor
+   *
+   * @param predecessor - The predecessor for key derivation
+   * @param path - The derivation path
+   * @returns Promise resolving to the derived address and compressed public key
+   * @throws Error if public key derivation fails
+   */
   async deriveAddressAndPublicKey(
     predecessor: string,
     path: string
   ): Promise<{ address: string; publicKey: string }> {
-    const ed25519PubKey = await this.contract.getDerivedPublicKey({
+    const uncompressedPubKey = await this.contract.getDerivedPublicKey({
       path,
       predecessor,
-      IsEd25519: true,
     })
 
-    if (!ed25519PubKey) {
-      throw new Error('Failed to get derived Ed25519 public key')
+    if (!uncompressedPubKey) {
+      throw new Error('Failed to get derived secp256k1 public key')
     }
 
-    const base58Key = ed25519PubKey.replace(/^(Ed25519:|ed25519:)/, '')
+    const compressedPubKey = cryptography.compressPubKey(
+      uncompressedPubKey as UncompressedPubKeySEC1
+    )
 
-    const keyBytes = base58.decode(base58Key)
-    const cleanPubKey = Buffer.from(keyBytes).toString('hex')
-
-    if (cleanPubKey.length !== 64) {
-      throw new Error(
-        `Invalid Ed25519 public key length: ${cleanPubKey.length}. Expected 64 hex characters. Raw key: ${ed25519PubKey}`
-      )
-    }
-
-    const address = this.deriveXRPAddress(cleanPubKey)
+    const address = this.deriveXRPAddress(compressedPubKey)
 
     return {
       address,
-      publicKey: cleanPubKey,
+      publicKey: compressedPubKey,
     }
   }
 
   /**
-   * Derives an XRP address from an Ed25519 public key
-   * @param publicKeyHex - The Ed25519 public key in hex format (64 chars)
-   * @returns The XRP address
+   * Derives an XRP address from a compressed secp256k1 public key
+   *
+   * @param publicKeyHex - The compressed secp256k1 public key in hex format (66 chars: 02/03 + 64)
+   * @returns The XRP address encoded using ripple-address-codec
    */
   private deriveXRPAddress(publicKeyHex: string): string {
     const publicKeyBuffer = Buffer.from(publicKeyHex, 'hex')
@@ -142,14 +144,33 @@ export class XRP extends ChainAdapter<
     return address
   }
 
+  /**
+   * Serializes an XRP unsigned transaction to a JSON string
+   *
+   * @param transaction - The unsigned transaction to serialize
+   * @returns JSON string representation of the transaction
+   */
   serializeTransaction(transaction: XRPUnsignedTransaction): string {
     return JSON.stringify(transaction)
   }
 
+  /**
+   * Deserializes a JSON string back to an XRP unsigned transaction
+   *
+   * @param serialized - The JSON string to deserialize
+   * @returns The deserialized unsigned transaction
+   */
   deserializeTransaction(serialized: string): XRPUnsignedTransaction {
     return JSON.parse(serialized)
   }
 
+  /**
+   * Prepares an XRP transaction for signing by autofilling required fields and generating signing hash
+   *
+   * @param transactionRequest - The transaction request containing payment details
+   * @returns Promise resolving to the prepared unsigned transaction and hash to sign
+   * @throws Error if transaction preparation fails
+   */
   async prepareTransactionForSigning(
     transactionRequest: XRPTransactionRequest
   ): Promise<{
@@ -160,76 +181,39 @@ export class XRP extends ChainAdapter<
       const client = new Client(this.rpcUrl)
       await client.connect()
 
-      const accountInfo = await client.request({
-        command: 'account_info',
-        account: transactionRequest.from,
-        ledger_index: 'validated',
-      })
-
-      const sequence =
-        accountInfo.result.account_data?.Sequence ||
-        transactionRequest.sequence ||
-        1
-
-      const ledger = await client.request({
-        command: 'ledger',
-        ledger_index: 'validated',
-      })
-
-      await client.disconnect()
-
-      const lastLedgerSequence = ledger.result.ledger_index + 20
-      // https://xrpl.org/resources/dev-tools/websocket-api-tool#simulate
-      const transaction: Record<string, unknown> = {
+      const signingPubKey = transactionRequest.publicKey
+      const prepared = await client.autofill({
         TransactionType: 'Payment',
         Account: transactionRequest.from,
         Destination: transactionRequest.to,
         Amount: transactionRequest.amount,
-        Fee: transactionRequest.fee || '12',
-        Sequence: sequence,
-        LastLedgerSequence: lastLedgerSequence,
-        SigningPubKey: '',
-      }
+        SigningPubKey: signingPubKey.toUpperCase(),
+      })
 
-      if (transactionRequest.destinationTag !== undefined) {
-        transaction.DestinationTag = transactionRequest.destinationTag
-      }
-
-      if (transactionRequest.memo) {
-        transaction.Memos = [
-          {
-            Memo: {
-              MemoData: Buffer.from(transactionRequest.memo, 'utf8')
-                .toString('hex')
-                .toUpperCase(),
-            },
-          },
-        ]
-      }
+      await client.disconnect()
 
       const unsignedTx: XRPUnsignedTransaction = {
-        transaction: transaction as any,
-        signingPubKey: '',
+        transaction: prepared as any,
+        signingPubKey,
       }
 
-      // Encode the transaction for signing using ripple-binary-codec
-      const encodedTx = encodeTx(transaction)
+      const encodedTx = encodeTx(prepared)
 
-      // For Ed25519 signatures, XRP requires the signing prefix 'STX\x00' (0x53545800)
-      // to be prepended to the encoded transaction before hashing
-      const signingPrefix = Buffer.from([0x53, 0x54, 0x58, 0x00]) // 'STX\x00'
-      const txBuffer = Buffer.from(encodedTx, 'hex')
-      const prefixedTx = Buffer.concat([signingPrefix, txBuffer])
+      const signingPrefix = new Uint8Array([0x53, 0x54, 0x58, 0x00])
+      const encodedBytes = new Uint8Array(Buffer.from(encodedTx, 'hex'))
 
-      // Create SHA-512 hash of the prefixed transaction for Ed25519 signing
-      const txHash = createHash('sha512').update(prefixedTx).digest()
+      const signingData = new Uint8Array(
+        signingPrefix.length + encodedBytes.length
+      )
+      signingData.set(signingPrefix, 0)
+      signingData.set(encodedBytes, signingPrefix.length)
 
-      // For Ed25519 signing, we need the full 64-byte SHA-512 hash as an array
-      const hashToSign = Array.from(txHash)
+      const hash = createHash('sha512').update(signingData).digest()
+      const signingHash = new Uint8Array(hash.slice(0, 32))
 
       return {
         transaction: unsignedTx,
-        hashesToSign: [hashToSign],
+        hashesToSign: [signingHash],
       }
     } catch (error) {
       console.error('Failed to prepare XRP transaction for signing:', error)
@@ -237,14 +221,21 @@ export class XRP extends ChainAdapter<
     }
   }
 
+  /**
+   * Finalizes transaction signing by applying RSV signatures to the prepared transaction
+   *
+   * @param params - Object containing the unsigned transaction and RSV signatures
+   * @param params.transaction - The unsigned transaction to sign
+   * @param params.rsvSignatures - Array of RSV signatures (only first signature is used)
+   * @returns JSON string of the signed transaction ready for broadcast
+   * @throws Error if no signatures are provided
+   */
   finalizeTransactionSigning({
     transaction,
     rsvSignatures,
-    publicKey,
   }: {
     transaction: XRPUnsignedTransaction
     rsvSignatures: RSVSignature[]
-    publicKey?: string
   }): string {
     if (rsvSignatures.length === 0) {
       throw new Error('Invalid signatures provided')
@@ -252,58 +243,68 @@ export class XRP extends ChainAdapter<
 
     const signature = rsvSignatures[0]
 
-    // Get the public key
-    let signingPubKey = publicKey || transaction.signingPubKey
-    if (!signingPubKey) {
-      throw new Error(
-        'Public key is required for XRP transaction signing. Please provide publicKey parameter.'
-      )
-    }
+    const derSignature = this.generateTxnSignature(
+      signature.r,
+      signature.s,
+      signature.v
+    )
 
-    // Clean up the public key format
-    signingPubKey = signingPubKey.replace(/^(0x|ED)/i, '')
-
-    // Validate Ed25519 public key length (32 bytes = 64 hex chars)
-    if (signingPubKey.length !== 64) {
-      throw new Error(
-        `Invalid Ed25519 public key length: ${signingPubKey.length}`
-      )
-    }
-
-    // Convert signature array to hex string
-    const signatureArray = (signature as any).signature
-    let signatureBuffer: Buffer
-
-    if (Array.isArray(signatureArray)) {
-      // Convert number array to Uint8Array first, then to Buffer
-      signatureBuffer = Buffer.from(new Uint8Array(signatureArray))
-    } else if (signatureArray instanceof Uint8Array) {
-      signatureBuffer = Buffer.from(signatureArray)
-    } else {
-      throw new Error(
-        'Invalid signature format: expected number array or Uint8Array'
-      )
-    }
-
-    const signatureHex = signatureBuffer.toString('hex')
-
-    // Validate Ed25519 signature length (64 bytes = 128 hex chars)
-    if (signatureHex.length !== 128) {
-      throw new Error(
-        `Invalid Ed25519 signature length: ${signatureHex.length}. Expected 128 hex characters.`
-      )
-    }
-
-    // Create signed transaction
-    const signedTx: Record<string, unknown> = {
+    const signedTransaction = {
       ...transaction.transaction,
-      TxnSignature: signatureHex.toUpperCase(),
-      SigningPubKey: 'ED' + signingPubKey.toUpperCase(),
+      TxnSignature: derSignature,
+      SigningPubKey: transaction.signingPubKey.toUpperCase(),
     }
 
-    return JSON.stringify(signedTx)
+    return JSON.stringify(signedTransaction)
   }
 
+  /**
+   * Generates a DER-encoded transaction signature from RSV signature components
+   *
+   * @param r - The R component of the signature in hex
+   * @param s - The S component of the signature in hex
+   * @param v - The V component of the signature (recovery ID)
+   * @returns DER-encoded signature in uppercase hex format
+   */
+  generateTxnSignature(r: string, s: string, v: number): string {
+    const rBuf = Buffer.from(r, 'hex')
+    const sBuf = Buffer.from(s, 'hex')
+    let rVal = rBuf
+    if (rBuf[0] > 0x7f) {
+      rVal = Buffer.concat([Buffer.from([0x00]), rBuf])
+    }
+
+    let sVal = sBuf
+    if (sBuf[0] > 0x7f) {
+      sVal = Buffer.concat([Buffer.from([0x00]), sBuf])
+    }
+
+    const totalLength = 2 + rVal.length + 2 + sVal.length
+
+    const derSignature = Buffer.alloc(2 + totalLength)
+    let offset = 0
+
+    derSignature.writeUInt8(0x30, offset++)
+    derSignature.writeUInt8(totalLength, offset++)
+    derSignature.writeUInt8(0x02, offset++)
+    derSignature.writeUInt8(rVal.length, offset++)
+    rVal.copy(derSignature, offset)
+    offset += rVal.length
+
+    derSignature.writeUInt8(0x02, offset++)
+    derSignature.writeUInt8(sVal.length, offset++)
+    sVal.copy(derSignature, offset)
+
+    return derSignature.toString('hex').toUpperCase()
+  }
+
+  /**
+   * Broadcasts a signed XRP transaction to the network
+   *
+   * @param txSerialized - JSON string of the signed transaction
+   * @returns Promise resolving to the transaction hash
+   * @throws Error if transaction submission fails or is rejected by the network
+   */
   async broadcastTx(txSerialized: string): Promise<{ hash: string }> {
     try {
       const client = new Client(this.rpcUrl)
@@ -311,58 +312,15 @@ export class XRP extends ChainAdapter<
 
       const transaction = JSON.parse(txSerialized) as Record<string, unknown>
 
-      // Handle Ed25519 SigningPubKey format for XRP Ledger
-      if (
-        transaction.SigningPubKey &&
-        typeof transaction.SigningPubKey === 'string'
-      ) {
-        let pubKey = transaction.SigningPubKey
-
-        // Remove any prefixes
-        if (pubKey.startsWith('0x')) {
-          pubKey = pubKey.slice(2)
-        }
-        if (pubKey.startsWith('ED')) {
-          pubKey = pubKey.slice(2)
-        }
-
-        // Validate it's a proper hex string
-        const isValidHex =
-          /^[0-9A-Fa-f]+$/.test(pubKey) && pubKey.length % 2 === 0
-
-        if (!isValidHex) {
-          throw new Error(
-            `Invalid SigningPubKey format: ${transaction.SigningPubKey}. Must be valid hex.`
-          )
-        }
-
-        // For Ed25519 keys, XRP Ledger requires the 'ED' prefix
-        // Ed25519 public keys are 32 bytes (64 hex chars)
-        if (pubKey.length === 64) {
-          transaction.SigningPubKey = 'ED' + pubKey.toUpperCase()
-        } else {
-          throw new Error(
-            `Invalid Ed25519 public key length: ${pubKey.length}. Expected 64 hex characters.`
-          )
-        }
-      }
-
-      // Encode the transaction to hex blob format
       const txBlob = encodeTx(transaction)
-      console.log('Encoded XRP transaction blob:', txBlob)
-      console.log('Transaction JSON:', JSON.stringify(transaction, null, 2))
-
-      // Use the correct XRPL client method for submitting transactions
       const response = await client.submit(txBlob)
 
       await client.disconnect()
 
-      // Check if the transaction was successfully submitted
       if (
         response.result.engine_result === 'tesSUCCESS' ||
         response.result.engine_result === 'terQUEUED'
       ) {
-        // Get transaction hash from the tx_json response
         const txHash = response.result.tx_json?.hash
         if (!txHash) {
           throw new Error('Transaction submitted but no hash received')

@@ -6,6 +6,7 @@ export interface XRPTransactionRequest {
   memo?: string
   fee?: string
   sequence?: number
+  publicKey: string
 }
 
 export interface XRPUnsignedTransaction {
@@ -19,10 +20,15 @@ export interface XRPUnsignedTransaction {
     DestinationTag?: number
     Memos?: Array<{
       Memo: {
-        MemoData: string
+        MemoData?: string
+        MemoType?: string
+        MemoFormat?: string
       }
     }>
     LastLedgerSequence?: number
+    SigningPubKey: string
+    Flags?: number
+    NetworkID?: number
   }
   signingPubKey: string
 }
@@ -82,7 +88,6 @@ export interface XRPPaymentChannelRequest
   extends Omit<XRPTransactionRequest, 'to'> {
   destination: string
   settleDelay: number
-  publicKey: string
   cancelAfter?: number
   destinationTag?: number
 }
@@ -106,8 +111,6 @@ export interface XRPTrustLineRequest
   qualityOut?: number
 }
 
-export type XRPNetworkIds = 'mainnet' | 'testnet' | 'devnet'
-
 export type XRPTransactionType =
   | 'Payment'
   | 'OfferCreate'
@@ -128,3 +131,39 @@ export type XRPTransactionType =
   | 'DepositPreauth'
   | 'SetOracle'
   | 'DeleteOracle'
+
+// Nuevos tipos para mayor precisión
+export interface XRPSignedTransaction {
+  Account: string
+  Destination: string
+  Amount: string
+  TransactionType: string
+  Fee: string
+  Sequence: number
+  DestinationTag?: number
+  Memos?: Array<{
+    Memo: {
+      MemoData?: string
+      MemoType?: string
+      MemoFormat?: string
+    }
+  }>
+  LastLedgerSequence?: number
+  SigningPubKey: string
+  TxnSignature: string
+  Flags?: number
+  NetworkID?: number
+}
+
+export interface XRPSubmitResponse {
+  result: {
+    engine_result: string
+    engine_result_code?: number
+    engine_result_message?: string
+    tx_blob: string
+    tx_json?: {
+      hash: string
+      [key: string]: any
+    }
+  }
+}

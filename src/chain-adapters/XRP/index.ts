@@ -1,7 +1,3 @@
 export { XRP } from './XRP'
 
-export type {
-  XRPTransactionRequest,
-  XRPUnsignedTransaction,
-  XRPNetworkIds,
-} from './types'
+export type { XRPTransactionRequest, XRPUnsignedTransaction } from './types'
