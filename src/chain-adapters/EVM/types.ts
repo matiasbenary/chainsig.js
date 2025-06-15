@@ -17,6 +17,25 @@ export interface EVMTransactionRequest
   from: Address
 }
 
+// Legacy transaction request coming from your dApp (includes 'from' address)
+export interface EVMTransactionRequestLegacy {
+  from: `0x${string}`
+  to: `0x${string}`
+  value?: bigint
+  gas?: bigint
+}
+
+// Legacy unsigned transaction to be signed
+export type EVMUnsignedLegacyTransaction = {
+  to: `0x${string}`
+  value?: bigint
+  gasPrice: bigint
+  nonce: number
+  gas: bigint
+  chainId: number
+  type: 'legacy'
+}
+
 export type EVMAuthorizationRequest = HashAuthorizationParameters<"hex">
 
 export type EVMMessage = SignableMessage
