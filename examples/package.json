@@ -10,7 +10,8 @@
     "send-btc": "tsx send-btc.ts",
     "send-sol": "tsx send-sol.ts",
     "send-apt": "tsx send-apt.ts",
-    "send-sui": "tsx send-sui.ts"
+    "send-sui": "tsx send-sui.ts",
+    "send-xrp": "tsx send-xrp.ts"
   },
   "keywords": [],
   "author": "",
