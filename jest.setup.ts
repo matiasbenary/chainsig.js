@@ -1,23 +1,37 @@
 // Handle ESM modules
 import { jest } from '@jest/globals'
 
-// Add BigInt serialization support
-BigInt.prototype.toJSON = function () {
-  return this.toString()
+// Add BigInt serialization support using a different approach
+if (typeof BigInt !== 'undefined') {
+  const originalJSON = JSON.stringify
+  JSON.stringify = function (
+    value: any,
+    replacer?: any,
+    space?: string | number
+  ): string {
+    return originalJSON(
+      value,
+      (key: string, val: any) => {
+        if (typeof val === 'bigint') {
+          return val.toString()
+        }
+        return replacer ? replacer(key, val) : val
+      },
+      space
+    )
+  }
 }
 
-// Silence TypeScript errors
+// Declare BigInt interface for TypeScript
 declare global {
   interface BigInt {
-    toJSON(): string
+    toJSON: () => string
   }
 }
 
 export {}
 
-// Removed elliptic mock since we're now using a dedicated mock file in __mocks__/elliptic.ts
-
-// Mock bn.js
+// Mock bn.js with proper TypeScript types
 class BN {
   value: bigint
 
@@ -30,7 +44,6 @@ class BN {
       this.value = value
     } else if (typeof value === 'string') {
       try {
-        // Handle hex strings
         if (value.startsWith('0x')) {
           this.value = BigInt(value)
         } else {
@@ -144,8 +157,7 @@ class BN {
     return bn.toTwos(width)
   }
 
-  // Add ethers.js BigNumber compatibility
-  static from(value: any): BN {
+  static from(value: string | number | bigint | BN): BN {
     return new BN(value)
   }
 
@@ -157,7 +169,7 @@ class BN {
 // Mock bn.js
 jest.mock('bn.js', () => BN)
 
-// Mock @solana/web3.js
+// Mock @solana/web3.js with proper types
 jest.mock('@solana/web3.js', () => {
   class MockPublicKey {
     private readonly _value: string
@@ -174,14 +186,24 @@ jest.mock('@solana/web3.js', () => {
       return this._value
     }
 
-    equals(other: any): boolean {
-      return this._value === other.toString()
+    equals(other: unknown): boolean {
+      return this._value === String(other)
     }
   }
 
+  interface MockInstruction {
+    keys?: Array<{
+      pubkey: MockPublicKey
+      isSigner: boolean
+      isWritable: boolean
+    }>
+    programId?: MockPublicKey
+    data?: Buffer
+  }
+
   class MockTransaction {
-    public instructions: any[] = []
-    public feePayer: any
+    public instructions: MockInstruction[] = []
+    public feePayer: MockPublicKey
     public recentBlockhash: string
 
     constructor() {
@@ -190,11 +212,10 @@ jest.mock('@solana/web3.js', () => {
     }
 
     static from(buffer: Buffer): MockTransaction {
-      const tx = new MockTransaction()
-      return tx
+      return new MockTransaction()
     }
 
-    add(...instructions: any[]) {
+    add(...instructions: MockInstruction[]): this {
       this.instructions.push(...instructions)
       return this
     }
@@ -203,19 +224,27 @@ jest.mock('@solana/web3.js', () => {
       return Buffer.from('mockSerializedTransaction')
     }
 
-    compileMessage() {
+    compileMessage: () => { serialize: () => Buffer } = () => {
       return {
         serialize: () => Buffer.from('mockMessage'),
       }
     }
 
-    addSignature(publicKey: any, signature: Buffer): void {
+    addSignature(publicKey: MockPublicKey, signature: Buffer): void {
       // Mock implementation
     }
   }
 
   const MockSystemProgram = {
-    transfer: ({ fromPubkey, toPubkey, lamports }: any) => ({
+    transfer: ({
+      fromPubkey,
+      toPubkey,
+      lamports,
+    }: {
+      fromPubkey: MockPublicKey
+      toPubkey: MockPublicKey
+      lamports: number
+    }) => ({
       fromPubkey,
       toPubkey,
       lamports,
@@ -230,14 +259,14 @@ jest.mock('@solana/web3.js', () => {
   }
 })
 
-// Mock @ethersproject/bignumber
+// Mock @ethersproject/bignumber with proper types
 jest.mock('@ethersproject/bignumber', () => ({
   BigNumber: {
-    from: (value: any) => new BN(value),
+    from: (value: string | number | bigint | BN): BN => new BN(value),
   },
 }))
 
-// Mock other ESM modules as needed
+// Mock other ESM modules
 jest.mock('@noble/curves/secp256k1', () => ({
   secp256k1: {
     getPublicKey: jest.fn(),

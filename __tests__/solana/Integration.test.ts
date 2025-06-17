@@ -4,7 +4,10 @@ import BN from 'bn.js'
 import * as nearAPI from 'near-api-js'
 
 import { Solana } from '../../src/chain-adapters/Solana/Solana'
-import { type ChainSignatureContract } from '../../src/contracts/ChainSignatureContract'
+import {
+  type ChainSignatureContract,
+  type HashToSign,
+} from '../../src/contracts/ChainSignatureContract'
 import type {
   KeyDerivationPath,
   UncompressedPubKeySEC1,
@@ -120,7 +123,7 @@ describe('Solana MPC Integration', () => {
 
         // Prepare the transaction for signing
         let transaction
-        let hashesToSign: number[][]
+        let hashesToSign: HashToSign[]
         try {
           const result = await solana.prepareTransactionForSigning(txRequest)
           transaction = result.transaction
@@ -143,7 +146,7 @@ describe('Solana MPC Integration', () => {
             feePayer: new PublicKey(fromAddress),
             recentBlockhash: 'dummy',
           }
-          hashesToSign = [[0, 1, 2, 3]]
+          hashesToSign = [Array.from(new Uint8Array([0, 1, 2, 3]))]
           // Skip the actual test
           expect(true).toBe(true)
           return
@@ -395,10 +398,10 @@ async function getNearChainSignatureContract(): Promise<ChainSignatureContract> 
       try {
         // Call the NEAR MPC contract with updated method name
         console.log('Calling public_key method...')
-        const response = await nearContract.public_key().catch((e) => {
+        const response = await nearContract.public_key().catch(async (e) => {
           console.error('Error with public_key method:', e)
           // Try fallback
-          return account
+          return await account
             .viewFunction({
               contractId: nearConfig.contractName,
               methodName: 'get_public_key',

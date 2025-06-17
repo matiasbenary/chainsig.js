@@ -10,6 +10,7 @@ import type {
   UncompressedPubKeySEC1,
   RSVSignature,
   DerivedPublicKeyArgs,
+  HashToSign,
 } from '../../src/types'
 
 // Define KeyPairString type to match NEAR API expectations
@@ -119,7 +120,7 @@ describe('Cosmos MPC Integration', () => {
 
         // Prepare the transaction for signing
         let transaction
-        let hashesToSign: number[][]
+        let hashesToSign: HashToSign[]
         try {
           const result = await cosmos.prepareTransactionForSigning(txRequest)
           transaction = result.transaction

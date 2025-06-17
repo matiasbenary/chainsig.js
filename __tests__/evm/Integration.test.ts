@@ -13,6 +13,7 @@ import type {
   RSVSignature,
   DerivedPublicKeyArgs,
   UncompressedPubKeySEC1,
+  HashToSign,
 } from '../../src/types'
 
 // Define KeyPairString type to match NEAR API expectations
@@ -237,7 +238,7 @@ describe('EVM MPC Integration', () => {
 
         // Prepare the transaction for signing
         let transaction
-        let hashesToSign: number[][]
+        let hashesToSign: HashToSign[]
         try {
           const result = await evm.prepareTransactionForSigning(txRequest)
           transaction = result.transaction
@@ -487,10 +488,10 @@ async function getNearChainSignatureContract(): Promise<ChainSignatureContract> 
       try {
         // Call the NEAR MPC contract with updated method name
         console.log('Calling public_key method...')
-        const response = await nearContract.public_key().catch((e) => {
+        const response = await nearContract.public_key().catch(async (e) => {
           console.error('Error with public_key method:', e)
           // Try fallback
-          return account
+          return await account
             .viewFunction({
               contractId: nearConfig.contractName,
               methodName: 'get_public_key',

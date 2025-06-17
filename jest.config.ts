@@ -1,14 +1,5 @@
 import { type Config } from 'jest'
 
-// Add JSON BigInt serialization support for Jest
-if (!('toJSON' in BigInt.prototype)) {
-  Object.defineProperty(BigInt.prototype, 'toJSON', {
-    value: function () {
-      return this.toString()
-    },
-  })
-}
-
 const config: Config = {
   testEnvironment: 'node',
   extensionsToTreatAsEsm: ['.ts'],
