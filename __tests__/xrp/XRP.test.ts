@@ -158,4 +158,86 @@ describe('XRP Balance Tests', () => {
       })
     })
   })
+
+  describe('deriveAddressAndPublicKey', () => {
+    it('should derive address and public key successfully', async () => {
+      const mockUncompressedPubKey = '04' + 'a'.repeat(128)
+      const predecessor = 'test-predecessor'
+      const path = 'test-path'
+
+      // Mock the getDerivedPublicKey to return a valid uncompressed public key
+      ;(
+        mockContract.getDerivedPublicKey as jest.MockedFunction<any>
+      ).mockResolvedValue(mockUncompressedPubKey)
+
+      const result = await xrp.deriveAddressAndPublicKey(predecessor, path)
+
+      expect(result).toHaveProperty('address')
+      expect(result).toHaveProperty('publicKey')
+      expect(typeof result.address).toBe('string')
+      expect(typeof result.publicKey).toBe('string')
+      expect(result.address.length).toBeGreaterThan(0)
+      expect(result.publicKey.length).toBeGreaterThan(0)
+    })
+
+    it('should throw error when public key derivation fails', async () => {
+      const predecessor = 'test-predecessor'
+      const path = 'test-path'
+
+      // Mock getDerivedPublicKey to return null/undefined
+      ;(
+        mockContract.getDerivedPublicKey as jest.MockedFunction<any>
+      ).mockResolvedValue(null)
+
+      await expect(
+        xrp.deriveAddressAndPublicKey(predecessor, path)
+      ).rejects.toThrow('Failed to get derived secp256k1 public key')
+    })
+
+    it('should throw error when getDerivedPublicKey rejects', async () => {
+      const predecessor = 'test-predecessor'
+      const path = 'test-path'
+
+      // Mock getDerivedPublicKey to reject
+      ;(
+        mockContract.getDerivedPublicKey as jest.MockedFunction<any>
+      ).mockRejectedValue(new Error('Contract error'))
+
+      await expect(
+        xrp.deriveAddressAndPublicKey(predecessor, path)
+      ).rejects.toThrow('Contract error')
+    })
+
+    it('should generate valid XRP address format', async () => {
+      const mockUncompressedPubKey = '04' + 'a'.repeat(128)
+      const predecessor = 'test-predecessor'
+      const path = 'test-path'
+
+      ;(
+        mockContract.getDerivedPublicKey as jest.MockedFunction<any>
+      ).mockResolvedValue(mockUncompressedPubKey)
+
+      const result = await xrp.deriveAddressAndPublicKey(predecessor, path)
+
+      // XRP addresses start with 'r' and are typically 25-34 characters long
+      expect(result.address).toMatch(/^r[a-zA-Z0-9]{24,33}$/)
+    })
+
+    it('should generate compressed public key format', async () => {
+      const mockUncompressedPubKey = '04' + 'a'.repeat(128)
+      const predecessor = 'test-predecessor'
+      const path = 'test-path'
+
+      ;(
+        mockContract.getDerivedPublicKey as jest.MockedFunction<any>
+      ).mockResolvedValue(mockUncompressedPubKey)
+
+      const result = await xrp.deriveAddressAndPublicKey(predecessor, path)
+
+      // Compressed public key should be 66 characters (33 bytes in hex)
+      // and start with 02 or 03
+      expect(result.publicKey).toMatch(/^(02|03)[a-fA-F0-9]{64}$/)
+      expect(result.publicKey.length).toBe(66)
+    })
+  })
 })
