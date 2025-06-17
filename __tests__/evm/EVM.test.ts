@@ -1,8 +1,7 @@
-// @ts-nocheck - Disable TypeScript type checking for this file
 import { LocalAccountSigner } from '@aa-sdk/core'
 import { alchemy, sepolia as alchemySepolia } from '@account-kit/infra'
 import { createLightAccountAlchemyClient } from '@account-kit/smart-contracts'
-import { describe, expect, it, jest } from '@jest/globals'
+import { describe, expect, it, jest, beforeEach } from '@jest/globals'
 import {
   createPublicClient,
   createWalletClient,
@@ -17,20 +16,19 @@ import { hardhat } from 'viem/chains'
 
 import { EVM } from '../../src/chain-adapters/EVM/EVM'
 import type { EVMTransactionRequest } from '../../src/chain-adapters/EVM/types'
-import type {
-  ChainSignatureContract,
-  SignArgs,
-} from '../../src/contracts/ChainSignatureContract'
+import type { ChainSignatureContract } from '../../src/contracts/ChainSignatureContract'
 import type { UncompressedPubKeySEC1, RSVSignature } from '../../src/types'
 
 // Mock elliptic related dependencies
 jest.mock('elliptic', () => {
   class EC {
-    constructor(curve) {
+    public curve: string
+
+    constructor(curve: string) {
       this.curve = curve
     }
 
-    keyFromPrivate() {
+    keyFromPrivate(): any {
       return {
         getPublic: () => ({
           encode: () => Buffer.from('mock_public_key'),
@@ -39,7 +37,7 @@ jest.mock('elliptic', () => {
       }
     }
 
-    keyFromPublic() {
+    keyFromPublic(): any {
       return {
         getPublic: () => ({
           encode: () => Buffer.from('mock_public_key'),
@@ -55,19 +53,15 @@ jest.mock('elliptic', () => {
   }
 })
 
-// Make BigInt serializable
-if (!('toJSON' in BigInt.prototype)) {
-  Object.defineProperty(BigInt.prototype, 'toJSON', {
-    value: function () {
-      return this.toString()
-    },
-  })
+// Make BigInt serializable using a safer approach
+;(BigInt.prototype as any).toJSON = function () {
+  return this.toString()
 }
 
 // Create a properly typed mock contract that matches the ChainSignatureContract interface
 const createMockContract = (): ChainSignatureContract => {
   const mockImpl = {
-    sign: jest.fn().mockImplementation(
+    sign: jest.fn<(args: any) => Promise<RSVSignature[]>>().mockImplementation(
       async (_args: unknown): Promise<RSVSignature[]> => [
         {
           r: 'a'.repeat(64),
@@ -76,13 +70,17 @@ const createMockContract = (): ChainSignatureContract => {
         },
       ]
     ),
-    getCurrentSignatureDeposit: jest.fn().mockReturnValue(1),
-    getPublicKey: jest.fn().mockResolvedValue(`04${'a'.repeat(128)}`),
-    getDerivedPublicKey: jest.fn().mockResolvedValue(`04${'a'.repeat(128)}`),
+    getCurrentSignatureDeposit: jest.fn<() => number>().mockReturnValue(1),
+    getPublicKey: jest
+      .fn<() => Promise<UncompressedPubKeySEC1>>()
+      .mockResolvedValue(`04${'a'.repeat(128)}`),
+    getDerivedPublicKey: jest
+      .fn<() => Promise<UncompressedPubKeySEC1>>()
+      .mockResolvedValue(`04${'a'.repeat(128)}`),
     contractId: 'test',
-    networkId: 'testnet',
-    provider: {},
-    viewFunction: jest.fn().mockResolvedValue({}),
+    networkId: 'testnet' as const,
+    provider: {} as any,
+    viewFunction: jest.fn<() => Promise<any>>().mockResolvedValue({}),
   }
 
   return mockImpl as unknown as ChainSignatureContract
@@ -110,6 +108,7 @@ describe('EVM', () => {
   const evm = new EVM({
     contract,
     publicClient: createPublicClient({
+      chain: hardhat,
       transport: http(rpcUrl),
     }),
   })
@@ -344,29 +343,33 @@ describe('EVM Chain Adapter', () => {
     // Create a properly typed mock contract
     mockContract = {
       getDerivedPublicKey: jest
-        .fn()
+        .fn<() => Promise<UncompressedPubKeySEC1>>()
         .mockResolvedValue(('04' + 'a'.repeat(128)) as UncompressedPubKeySEC1),
-      getCurrentSignatureDeposit: jest.fn().mockReturnValue(1),
+      getCurrentSignatureDeposit: jest.fn<() => number>().mockReturnValue(1),
       getPublicKey: jest
-        .fn()
+        .fn<() => Promise<UncompressedPubKeySEC1>>()
         .mockResolvedValue(('04' + 'a'.repeat(128)) as UncompressedPubKeySEC1),
       contractId: 'test',
       networkId: 'testnet' as any,
       provider: {} as any,
-      viewFunction: jest.fn().mockResolvedValue({}),
+      viewFunction: jest.fn<() => Promise<any>>().mockResolvedValue({}),
       sign: jest
-        .fn()
+        .fn<(args: any) => Promise<RSVSignature[]>>()
         .mockResolvedValue([{ v: 27, r: 'a'.repeat(64), s: 'b'.repeat(64) }]),
     } as unknown as ChainSignatureContract
 
     // Create a properly typed public client mock
     mockPublicClient = {
-      getChainId: jest.fn().mockResolvedValue(1),
-      getTransactionCount: jest.fn().mockResolvedValue(BigInt(0)),
-      request: jest.fn().mockResolvedValue(undefined),
+      getChainId: jest.fn<() => Promise<number>>().mockResolvedValue(1),
+      getTransactionCount: jest
+        .fn<() => Promise<bigint>>()
+        .mockResolvedValue(BigInt(0)),
+      request: jest.fn<() => Promise<any>>().mockResolvedValue(undefined),
       // Add custom properties needed for tests
-      estimateGas: jest.fn().mockResolvedValue(BigInt(21000)),
-      estimateFeesPerGas: jest.fn().mockResolvedValue({
+      estimateGas: jest
+        .fn<() => Promise<bigint>>()
+        .mockResolvedValue(BigInt(21000)),
+      estimateFeesPerGas: jest.fn<() => Promise<any>>().mockResolvedValue({
         maxFeePerGas: BigInt('1000000000'),
         maxPriorityFeePerGas: BigInt('100000000'),
       }),
