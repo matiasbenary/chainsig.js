@@ -23,24 +23,30 @@ export class XRP extends ChainAdapter<
 > {
   private readonly rpcUrl: string
   private readonly contract: ChainSignatureContract
+  private readonly client: Client
+
   /**
    * Creates a new XRP chain adapter instance
    *
    * @param params - Configuration parameters
    * @param params.rpcUrl - XRP Ledger RPC endpoint URL
    * @param params.contract - Instance of the chain signature contract for MPC operations
+   * @param params.client - Optional XRPL client instance (for testing)
    */
   constructor({
     rpcUrl,
     contract,
+    client,
   }: {
     rpcUrl: string
     contract: ChainSignatureContract
+    client?: Client
   }) {
     super()
 
     this.rpcUrl = rpcUrl
     this.contract = contract
+    this.client = client || new Client(this.rpcUrl)
   }
 
   /**
@@ -54,25 +60,24 @@ export class XRP extends ChainAdapter<
     address: string
   ): Promise<{ balance: bigint; decimals: number }> {
     try {
-      const client = new Client(this.rpcUrl)
-      await client.connect()
+      await this.client.connect()
 
       try {
-        const response = await client.request({
+        const response = await this.client.request({
           command: 'account_info',
           account: address,
           ledger_index: 'validated',
         })
 
         const balance = BigInt(String(response?.result?.account_data?.Balance))
-        await client.disconnect()
+        await this.client.disconnect()
 
         return {
           balance: balance || 0n,
           decimals: 6,
         }
       } catch (accountError: any) {
-        await client.disconnect()
+        await this.client.disconnect()
 
         if (
           accountError?.data?.error === 'actNotFound' ||
@@ -178,11 +183,10 @@ export class XRP extends ChainAdapter<
     hashesToSign: HashToSign[]
   }> {
     try {
-      const client = new Client(this.rpcUrl)
-      await client.connect()
+      await this.client.connect()
 
       const signingPubKey = transactionRequest.publicKey
-      const prepared = await client.autofill({
+      const prepared = await this.client.autofill({
         TransactionType: 'Payment',
         Account: transactionRequest.from,
         Destination: transactionRequest.to,
@@ -190,7 +194,7 @@ export class XRP extends ChainAdapter<
         SigningPubKey: signingPubKey.toUpperCase(),
       })
 
-      await client.disconnect()
+      await this.client.disconnect()
 
       const unsignedTx: XRPUnsignedTransaction = {
         transaction: prepared as any,
@@ -307,15 +311,14 @@ export class XRP extends ChainAdapter<
    */
   async broadcastTx(txSerialized: string): Promise<{ hash: string }> {
     try {
-      const client = new Client(this.rpcUrl)
-      await client.connect()
+      await this.client.connect()
 
       const transaction = JSON.parse(txSerialized) as Record<string, unknown>
 
       const txBlob = encodeTx(transaction)
-      const response = await client.submit(txBlob)
+      const response = await this.client.submit(txBlob)
 
-      await client.disconnect()
+      await this.client.disconnect()
 
       if (
         response.result.engine_result === 'tesSUCCESS' ||

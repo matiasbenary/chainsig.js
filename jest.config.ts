@@ -31,6 +31,8 @@ const config: Config = {
   // For ES modules compatibility
   testRunner: 'jest-circus/runner',
   transformIgnorePatterns: ['/node_modules/(?!(@cosmjs|bitcoinjs-lib)/)'],
+  workerThreads: true,
+  maxWorkers: 1,
 }
 
 export default config

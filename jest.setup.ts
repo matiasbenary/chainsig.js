@@ -1,26 +1,53 @@
-// Handle ESM modules
-import { jest } from '@jest/globals'
-
-// Add BigInt serialization support using a different approach
+// Global BigInt serialization fix - must be at the very top
 if (typeof BigInt !== 'undefined') {
-  const originalJSON = JSON.stringify
+  // Add toJSON method to BigInt prototype
+  ;(BigInt.prototype as any).toJSON = function () {
+    return this.toString()
+  }
+
+  // Override JSON.stringify globally with comprehensive error handling
+  const originalStringify = JSON.stringify
   JSON.stringify = function (
     value: any,
     replacer?: any,
     space?: string | number
   ): string {
-    return originalJSON(
-      value,
-      (key: string, val: any) => {
-        if (typeof val === 'bigint') {
-          return val.toString()
-        }
-        return replacer ? replacer(key, val) : val
-      },
-      space
-    )
+    try {
+      return originalStringify(
+        value,
+        (key: string, val: any) => {
+          if (typeof val === 'bigint') {
+            return val.toString()
+          }
+          return replacer ? replacer(key, val) : val
+        },
+        space
+      )
+    } catch (error) {
+      // Fallback for edge cases
+      return originalStringify(
+        value,
+        (key: string, val: any) => {
+          if (typeof val === 'bigint') {
+            return val.toString()
+          }
+          if (typeof val === 'object' && val !== null) {
+            try {
+              return JSON.parse(JSON.stringify(val))
+            } catch {
+              return '[Non-serializable Object]'
+            }
+          }
+          return replacer ? replacer(key, val) : val
+        },
+        space
+      )
+    }
   }
 }
+
+// Handle ESM modules
+import { jest } from '@jest/globals'
 
 // Declare BigInt interface for TypeScript
 declare global {
