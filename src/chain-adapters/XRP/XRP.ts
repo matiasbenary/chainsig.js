@@ -62,41 +62,39 @@ export class XRP extends ChainAdapter<
     try {
       await this.client.connect()
 
-      try {
-        const response = await this.client.request({
-          command: 'account_info',
-          account: address,
-          ledger_index: 'validated',
-        })
+      const response = await this.client.request({
+        command: 'account_info',
+        account: address,
+        ledger_index: 'validated',
+      })
 
-        const balance = BigInt(String(response?.result?.account_data?.Balance))
-        await this.client.disconnect()
+      const balance = BigInt(String(response?.result?.account_data?.Balance))
 
+      return {
+        balance: balance || 0n,
+        decimals: 6,
+      }
+    } catch (error: any) {
+      // Handle account not found errors
+      if (
+        error?.data?.error === 'actNotFound' ||
+        error?.message?.includes('Account not found') ||
+        error?.data?.error_message?.includes('Account not found')
+      ) {
         return {
-          balance: balance || 0n,
+          balance: 0n,
           decimals: 6,
         }
-      } catch (accountError: any) {
-        await this.client.disconnect()
-
-        if (
-          accountError?.data?.error === 'actNotFound' ||
-          accountError?.message?.includes('Account not found') ||
-          accountError?.data?.error_message?.includes('Account not found')
-        ) {
-          return {
-            balance: 0n,
-            decimals: 6,
-          }
-        }
-
-        throw accountError
       }
-    } catch (error) {
+
       console.error('Failed to fetch XRP balance:', error)
-      return {
-        balance: 0n,
-        decimals: 6,
+      throw new Error('Failed to fetch XRP balance')
+    } finally {
+      // Always disconnect in finally block to ensure cleanup
+      try {
+        await this.client.disconnect()
+      } catch (disconnectError) {
+        console.warn('Error disconnecting XRP client:', disconnectError)
       }
     }
   }
