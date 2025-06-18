@@ -11,7 +11,7 @@ import type { ChainSignatureContract } from '../../src/contracts/ChainSignatureC
 
 const toBigInt = (value: bigint | BN | string | number): bigint => {
   if (typeof value === 'bigint') return value
-  if (value instanceof BN) return BigInt(value.toString(10) as string)
+  if (value instanceof BN) return BigInt(value.toString(10))
   if (typeof value === 'string') return BigInt(value)
   if (typeof value === 'number') return BigInt(value)
   throw new Error('Invalid value type for BigInt conversion')

@@ -1,14 +1,5 @@
 import { type Config } from 'jest'
 
-// Add JSON BigInt serialization support for Jest
-if (!('toJSON' in BigInt.prototype)) {
-  Object.defineProperty(BigInt.prototype, 'toJSON', {
-    value: function () {
-      return this.toString()
-    },
-  })
-}
-
 const config: Config = {
   testEnvironment: 'node',
   extensionsToTreatAsEsm: ['.ts'],
@@ -40,6 +31,8 @@ const config: Config = {
   // For ES modules compatibility
   testRunner: 'jest-circus/runner',
   transformIgnorePatterns: ['/node_modules/(?!(@cosmjs|bitcoinjs-lib)/)'],
+  workerThreads: true,
+  maxWorkers: 1,
 }
 
 export default config

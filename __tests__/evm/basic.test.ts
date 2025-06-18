@@ -1,12 +1,5 @@
-// @ts-nocheck - Disable TypeScript type checking for this file
 import { describe, expect, it, jest } from '@jest/globals'
-import {
-  createPublicClient,
-  http,
-  parseEther,
-  recoverMessageAddress,
-  recoverTypedDataAddress,
-} from 'viem'
+import { createPublicClient, http, parseEther } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { hardhat } from 'viem/chains'
 
@@ -15,13 +8,9 @@ import type { UserOperationV7 } from '../../src/chain-adapters/EVM/types'
 import type { ChainSignatureContract } from '../../src/contracts/ChainSignatureContract'
 import type { RSVSignature } from '../../src/types'
 
-// Make BigInt serializable
-if (!('toJSON' in BigInt.prototype)) {
-  Object.defineProperty(BigInt.prototype, 'toJSON', {
-    value: function () {
-      return this.toString()
-    },
-  })
+// Make BigInt serializable for Jest
+;(BigInt.prototype as any).toJSON = function () {
+  return this.toString()
 }
 
 describe('EVM Basic', () => {
@@ -30,21 +19,25 @@ describe('EVM Basic', () => {
   const testAccount = privateKeyToAccount(privateKey)
   const rpcUrl = 'http://127.0.0.1:8545'
 
-  const createMockContract = () => {
+  const createMockContract = (): ChainSignatureContract => {
     return {
-      sign: jest.fn().mockResolvedValue([
+      sign: jest.fn<() => Promise<RSVSignature[]>>().mockResolvedValue([
         {
           r: 'a'.repeat(64),
           s: 'b'.repeat(64),
           v: 27,
         },
       ]),
-      getPublicKey: jest.fn().mockResolvedValue(`04${'a'.repeat(128)}`),
-      getDerivedPublicKey: jest.fn().mockResolvedValue(`04${'a'.repeat(128)}`),
+      getPublicKey: jest
+        .fn<() => Promise<string>>()
+        .mockResolvedValue(`04${'a'.repeat(128)}`),
+      getDerivedPublicKey: jest
+        .fn<() => Promise<string>>()
+        .mockResolvedValue(`04${'a'.repeat(128)}`),
       contractId: 'test',
       networkId: 'testnet',
       provider: {},
-      viewFunction: jest.fn().mockResolvedValue({}),
+      viewFunction: jest.fn<() => Promise<any>>().mockResolvedValue({}),
     } as any as ChainSignatureContract
   }
 
@@ -146,15 +139,28 @@ describe('EVM Basic', () => {
     const mockContract = createMockContract()
 
     const mockPublicClient = {
-      getChainId: jest.fn().mockResolvedValue(1),
-      getTransactionCount: jest.fn().mockResolvedValue(BigInt(0)),
-      request: jest.fn().mockResolvedValue(undefined),
-      getGasPrice: jest.fn().mockResolvedValue(BigInt(1000000000)),
-      estimateGas: jest.fn().mockResolvedValue(BigInt(21000)),
-      estimateFeesPerGas: jest.fn().mockResolvedValue({
-        maxFeePerGas: BigInt('1000000000'),
-        maxPriorityFeePerGas: BigInt('100000000'),
-      }),
+      getChainId: jest.fn<() => Promise<number>>().mockResolvedValue(1),
+      getTransactionCount: jest
+        .fn<() => Promise<bigint>>()
+        .mockResolvedValue(BigInt(0)),
+      request: jest.fn<() => Promise<undefined>>().mockResolvedValue(undefined),
+      getGasPrice: jest
+        .fn<() => Promise<bigint>>()
+        .mockResolvedValue(BigInt(1000000000)),
+      estimateGas: jest
+        .fn<() => Promise<bigint>>()
+        .mockResolvedValue(BigInt(21000)),
+      estimateFeesPerGas: jest
+        .fn<
+          () => Promise<{
+            maxFeePerGas: bigint
+            maxPriorityFeePerGas: bigint
+          }>
+        >()
+        .mockResolvedValue({
+          maxFeePerGas: BigInt('1000000000'),
+          maxPriorityFeePerGas: BigInt('100000000'),
+        }),
     } as any
 
     const evm = new EVM({
@@ -200,7 +206,7 @@ describe('EVM Basic', () => {
     const mockContract = createMockContract()
 
     const mockPublicClient = {
-      getChainId: jest.fn().mockResolvedValue(1),
+      getChainId: jest.fn<() => Promise<number>>().mockResolvedValue(1),
     } as any
 
     const evm = new EVM({
@@ -211,14 +217,18 @@ describe('EVM Basic', () => {
     const userOp: UserOperationV7 = {
       sender: '0x1234567890123456789012345678901234567890',
       nonce: '0x0',
-      initCode: '0x',
+      factory: '0x',
+      factoryData: '0x',
       callData: '0x',
       callGasLimit: '0x5000',
       verificationGasLimit: '0x100000',
       preVerificationGas: '0x20000',
       maxFeePerGas: '0x3B9ACA00',
       maxPriorityFeePerGas: '0x3B9ACA00',
-      paymasterAndData: '0x',
+      paymaster: '0x',
+      paymasterVerificationGasLimit: '0x0',
+      paymasterPostOpGasLimit: '0x0',
+      paymasterData: '0x',
       signature: '0x',
     }
 

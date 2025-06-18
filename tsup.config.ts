@@ -23,7 +23,7 @@ export default defineConfig((options) => {
     target,
     platform,
     outDir,
-    outExtension({ format }) {
+    outExtension: ({ format }) => {
       return {
         js: format === 'esm' ? `.${platform}.js` : `.${platform}.cjs`,
       }
@@ -34,18 +34,20 @@ export default defineConfig((options) => {
     dts: isNode,
     external: [
       // Node.js built-ins
-      ...(isNode ? ['path', 'fs', 'crypto', 'stream', 'util', 'events', 'buffer'] : ['crypto', 'stream', 'util', 'events', 'buffer']),
+      ...(isNode
+        ? ['path', 'fs', 'crypto', 'stream', 'util', 'events', 'buffer']
+        : ['crypto', 'stream', 'util', 'events', 'buffer']),
       // External dependencies that should not be bundled
       'cosmjs-types',
       '@cosmjs/amino',
-      '@cosmjs/crypto', 
+      '@cosmjs/crypto',
       '@cosmjs/encoding',
       '@cosmjs/math',
       '@cosmjs/proto-signing',
       '@cosmjs/stargate',
       '@near-js/accounts',
       '@near-js/crypto',
-      '@near-js/keystores', 
+      '@near-js/keystores',
       '@near-js/transactions',
       '@near-js/types',
       '@near-wallet-selector/core',
@@ -60,11 +62,11 @@ export default defineConfig((options) => {
       'elliptic',
       'js-sha3',
       'near-api-js',
-      'viem'
+      'viem',
     ],
     treeshake: true,
     splitting: false,
-    esbuildOptions(options) {
+    esbuildOptions: (options) => {
       options.conditions = isNode
         ? ['node', 'import', 'default']
         : ['browser', 'import', 'default']
@@ -78,7 +80,7 @@ export default defineConfig((options) => {
         '@constants': resolve(__dirname, './src/constants.ts'),
         '@types': resolve(__dirname, './src/types.ts'),
       }
-      
+
       // Configure for proper ESM handling
       if (options.format === 'esm') {
         options.packages = 'external'

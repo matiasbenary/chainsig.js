@@ -10,6 +10,7 @@ import type {
   UncompressedPubKeySEC1,
   RSVSignature,
   DerivedPublicKeyArgs,
+  HashToSign,
 } from '../../src/types'
 
 // Define KeyPairString type to match NEAR API expectations
@@ -110,7 +111,7 @@ describe('Bitcoin MPC Integration', () => {
 
         // Prepare the transaction for signing
         let transaction
-        let hashesToSign: number[][]
+        let hashesToSign: HashToSign[]
         try {
           const result = await bitcoin.prepareTransactionForSigning(txRequest)
           transaction = result.transaction
@@ -132,7 +133,7 @@ describe('Bitcoin MPC Integration', () => {
             psbt: new bitcoinjs.Psbt({ network: bitcoinjs.networks.testnet }),
             publicKey,
           }
-          hashesToSign = [[0, 1, 2, 3]]
+          hashesToSign = [Array.from(new Uint8Array([0, 1, 2, 3]))]
           // Skip the actual test
           expect(true).toBe(true)
           return

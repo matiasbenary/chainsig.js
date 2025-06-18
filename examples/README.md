@@ -20,23 +20,41 @@ This directory contains examples demonstrating how to use ChainSig.js for multi-
 
 ## Available Examples
 
+### Aptos Example
+```bash
+npm run send-apt
+```
+Demonstrates sending APT tokens using NEAR Chain Signatures on Aptos testnet.
+
+### Bitcoin Example
+```bash
+npm run send-btc
+```
+Demonstrates sending BTC using NEAR Chain Signatures on Bitcoin testnet.
+
+### Ethereum Example
+```bash
+npm run send-eth
+```
+Demonstrates sending ETH using NEAR Chain Signatures on Ethereum Sepolia testnet.
+
 ### Solana Example
 ```bash
 npm run send-sol
 ```
-Demonstrates sending SOL tokens using NEAR Chain Signatures.
+Demonstrates sending SOL tokens using NEAR Chain Signatures on Solana devnet.
 
 ### Sui Example
 ```bash
 npm run send-sui
 ```
-Demonstrates sending SUI tokens using NEAR Chain Signatures.
+Demonstrates sending SUI tokens using NEAR Chain Signatures on Sui testnet.
 
-### Aptos Example
+### XRP Example
 ```bash
-npm run send-apt
+npm run send-xrp
 ```
-Demonstrates sending APT tokens using NEAR Chain Signatures.
+Demonstrates sending XRP using NEAR Chain Signatures on XRP Ledger testnet.
 
 ## Important Notes
 
