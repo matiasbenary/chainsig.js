@@ -31,6 +31,8 @@ import type {
   UserOperationV6,
   UserOperationV7,
   EVMAuthorizationRequest,
+  EVMTransactionRequestLegacy,
+  EVMUnsignedLegacyTransaction,
 } from '@chain-adapters/EVM/types'
 import { fetchEVMFeeProperties } from '@chain-adapters/EVM/utils'
 import type { ChainSignatureContract } from '@contracts/ChainSignatureContract'
@@ -81,6 +83,29 @@ export class EVM extends ChainAdapter<EVMTransactionRequest, EVMUnsignedTransact
       ...rest,
     }
   }
+
+  private async attachGasAndNonceLegacy(
+    transaction: EVMTransactionRequestLegacy
+  ): Promise<EVMUnsignedLegacyTransaction> {
+    const gasPrice = await this.client.getGasPrice()
+    const nonce = await this.client.getTransactionCount({
+      address: transaction.from,
+    })
+
+    const { from, ...rest } = transaction;
+
+    return {
+      ...rest,
+      gasPrice: BigInt(gasPrice),
+      nonce: Number(nonce),
+      value: rest.value !== undefined ? BigInt(rest.value) : undefined,
+      gas: rest.gas !== undefined ? BigInt(rest.gas) : BigInt(21000),
+      chainId: await this.client.getChainId(),
+      type: 'legacy',
+    }
+  }
+
+
 
   private transformRSVSignature(signature: RSVSignature): Signature {
     return {
@@ -160,6 +185,21 @@ export class EVM extends ChainAdapter<EVMTransactionRequest, EVMUnsignedTransact
     const serializedTx = serializeTransaction(transaction)
     const txHash = toBytes(keccak256(serializedTx))
 
+    return {
+      transaction,
+      hashesToSign: [Array.from(txHash)],
+    }
+  }
+
+  async prepareTransactionForSigningLegacy(
+    transactionRequest: EVMTransactionRequestLegacy
+  ): Promise<{
+    transaction: EVMUnsignedLegacyTransaction
+    hashesToSign: HashToSign[]
+  }> {
+    const transaction = await this.attachGasAndNonceLegacy(transactionRequest)
+    const serializedTx = serializeTransaction(transaction)
+    const txHash = toBytes(keccak256(serializedTx))
     return {
       transaction,
       hashesToSign: [Array.from(txHash)],
@@ -294,6 +334,23 @@ export class EVM extends ChainAdapter<EVMTransactionRequest, EVMUnsignedTransact
     rsvSignatures: RSVSignature[]
   }): `0x02${string}` {
     const signature = this.transformRSVSignature(rsvSignatures[0])
+
+    return serializeTransaction(transaction, signature)
+  }
+
+  public finalizeTransactionSigningLegacy({
+    transaction,
+    rsvSignatures,
+  }: {
+    transaction: EVMUnsignedLegacyTransaction
+    rsvSignatures: RSVSignature[]
+  }): `0x${string}` {
+    const signature = {
+      v: BigInt(rsvSignatures[0].v),
+      r: `0x${rsvSignatures[0].r.padStart(64, '0')}` as `0x${string}`,
+      s: `0x${rsvSignatures[0].s.padStart(64, '0')}` as `0x${string}`,
+      yParity: rsvSignatures[0].v - 27,
+    }
 
     return serializeTransaction(transaction, signature)
   }
