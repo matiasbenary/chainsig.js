@@ -1,74 +1,43 @@
-name: Generate and Deploy TypeDoc Documentation
+name: Deploy TypeDoc on GitHub pages
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
+    push:
+      branches:
+        master  
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
+env:
+  NODE_VERSION: 20.18.3
+  ENTRY_FILE: 'packages'
+  CONFIG_PATH: 'tsconfig.base.json'
+  DESTINATION_FOLDER: "docs"
+  
 jobs:
-  generate-docs:
+  deploy:
+    concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.15.0'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Generate TypeDoc documentation
-        run: npm run docs:generate
-      
-      - name: Upload documentation artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: typedoc-docs
-          path: docs/
-          retention-days: 30
+      - uses: actions/checkout@v4
 
-  deploy-pages:
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-    needs: generate-docs
-    runs-on: ubuntu-latest
-    
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    
-    steps:
-      - name: Download documentation artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/setup-node@v4
         with:
-          name: typedoc-docs
-          path: docs/
-      
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-      
-      - name: Upload to GitHub Pages
-        uses: actions/upload-pages-artifact@v3
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn
+
+      - name: Build project
+        run:  yarn run build
+
+      - name: Build documentation
+        run:  yarn run docs:generate
+
+      - name: Deploy to GitHub pages
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          path: docs/
-      
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: gh-pages
+          folder: ${{ env.DESTINATION_FOLDER }}
+          clean: true
