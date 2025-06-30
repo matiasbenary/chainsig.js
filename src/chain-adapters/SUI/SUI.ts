@@ -60,7 +60,7 @@ export class SUI extends ChainAdapter<
 
     return {
       balance: BigInt(balance.totalBalance),
-      decimals: 8,
+      decimals: 9,
     }
   }
 
