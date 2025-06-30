@@ -3,7 +3,11 @@ name: Deploy TypeDoc on GitHub pages
 on:
     push:
       branches:
-        master  
+        - main
+    pull_request:
+      branches:
+        - main
+    workflow_dispatch:
 
 env:
   NODE_VERSION: 20.18.3
