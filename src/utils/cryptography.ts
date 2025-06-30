@@ -101,9 +101,10 @@ export const najToUncompressedPubKeySEC1 = (
  * Derives a child public key from a parent public key using the sig.network v1.0.0 epsilon derivation scheme.
  * The parent public keys are defined in @constants.ts
  *
- * @param najPublicKey - The parent public key in uncompressed SEC1 format (e.g. 04 || x || y)
+ * @param rootUncompressedPubKeySEC1 - The parent public key in uncompressed SEC1 format (e.g. 04 || x || y)
  * @param predecessorId - The predecessor ID is the address of the account calling the signer contract (e.g EOA or Contract Address)
  * @param path - Optional derivation path suffix (defaults to empty string)
+ * @param chainId - The chain ID for key derivation
  * @returns The derived child public key in uncompressed SEC1 format (04 || x || y)
  */
 export function deriveChildPublicKey(

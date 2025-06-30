@@ -10,6 +10,9 @@ import { type EVMTransactionRequest } from '@chain-adapters/EVM/types'
 
 export type ChainSignatureContractIds = string
 
+/**
+ * Network identifiers for NEAR blockchain environments
+ */
 export type NearNetworkIds = 'mainnet' | 'testnet'
 
 export interface ChainProvider {

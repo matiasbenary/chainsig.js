@@ -11,3 +11,5 @@ export type {
   BTCInput,
   BTCNetworkIds,
 } from './types'
+
+export { Mempool } from './BTCRpcAdapter/Mempool'

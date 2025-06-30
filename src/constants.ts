@@ -29,7 +29,7 @@ export const ROOT_PUBLIC_KEYS: Record<keyof typeof ENVS, NajPublicKey> = {
  * Chain IDs used in the key derivation function (KDF) for deriving child public keys to
  * distinguish between different chains.
  *
- * @see {@link deriveChildPublicKey} in cryptography.ts for usage details
+ * @see {@link utils.cryptography.deriveChildPublicKey} for usage details
  */
 export const KDF_CHAIN_IDS = {
   [CHAINS.ETHEREUM]: '0x1',

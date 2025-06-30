@@ -192,7 +192,7 @@ export class XRP extends ChainAdapter<
         SigningPubKey: signingPubKey.toUpperCase(),
       })
 
-      await this.client.disconnect()
+      // Don't disconnect here - allow connection reuse
 
       const unsignedTx: XRPUnsignedTransaction = {
         transaction: prepared as any,

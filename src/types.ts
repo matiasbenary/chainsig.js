@@ -1,6 +1,6 @@
 export { type HashToSign } from '@contracts/ChainSignatureContract'
 
-type Base58String = string
+export type Base58String = string
 
 export type NajPublicKey = `secp256k1:${Base58String}`
 
@@ -20,7 +20,7 @@ export interface Signature {
   signature: number[]
 }
 
-type Scheme = 'secp256k1' | 'ed25519' | 'Ed25519' | 'Secp256k1'
+export type Scheme = 'secp256k1' | 'ed25519' | 'Ed25519' | 'Secp256k1'
 
 export interface KeyDerivationPath {
   index: number

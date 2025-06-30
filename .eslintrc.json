@@ -8,6 +8,7 @@
     "plugin:import/typescript",
     "plugin:prettier/recommended"
   ],
+  "ignorePatterns": ["docs/**/*"],
   "parserOptions": {
     "project": ["./tsconfig.json", "./tsconfig.eslint.json"]
   },

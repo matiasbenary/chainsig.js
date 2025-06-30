@@ -6,6 +6,7 @@
   },
   "include": [
     ".eslintrc.cjs",
+    "babel.config.js",
     "src/**/*.ts",
     "tsup.config.ts",
     "__tests__/**/*.ts",

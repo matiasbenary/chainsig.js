@@ -254,7 +254,7 @@ describe('EVM', () => {
       rsvSignatures: [mpcSignature[0]],
     })
 
-    const walletSignature = await walletClient.signTransaction(transactionInput)
+    await walletClient.signTransaction(transactionInput)
 
     // Skip exact equality check, just verify we have a response
     expect(tx).toBeDefined()

@@ -5,7 +5,7 @@ import type {
   TypedDataDefinition,
   SignableMessage,
 } from 'viem'
-import { HashAuthorizationParameters } from 'viem/experimental'
+import { type HashAuthorizationParameters } from 'viem/experimental'
 
 export type EVMUnsignedTransaction = TransactionRequest & {
   type: 'eip1559'
@@ -26,7 +26,7 @@ export interface EVMTransactionRequestLegacy {
 }
 
 // Legacy unsigned transaction to be signed
-export type EVMUnsignedLegacyTransaction = {
+export interface EVMUnsignedLegacyTransaction {
   to: `0x${string}`
   value?: bigint
   gasPrice: bigint
@@ -36,7 +36,7 @@ export type EVMUnsignedLegacyTransaction = {
   type: 'legacy'
 }
 
-export type EVMAuthorizationRequest = HashAuthorizationParameters<"hex">
+export type EVMAuthorizationRequest = HashAuthorizationParameters<'hex'>
 
 export type EVMMessage = SignableMessage
 
